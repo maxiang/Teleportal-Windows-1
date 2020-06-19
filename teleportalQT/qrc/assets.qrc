@@ -1,0 +1,16 @@
+<RCC>
+    <qresource prefix="/">
+        <file>../assets/video.qml</file>
+        <file>../assets/keyboardControls.png</file>
+        <file>../assets/icons/main.svg</file>
+        <file>../assets/icons/menu.svg</file>
+        <file>../assets/icons/setting.svg</file>
+        <file>../assets/icons/video.svg</file>
+        <file>../assets/logo/Logo-Large.png</file>
+        <file>../assets/icons/sonar-icon.png</file>
+        <file>../assets/maps.qml</file>
+        <file>../assets/icons/help.png</file>
+        <file>../assets/icons/map.png</file>
+        <file>../assets/icons/rovicon2.png</file>
+    </qresource>
+</RCC>
