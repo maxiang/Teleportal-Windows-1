@@ -1,6 +1,6 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
-
+#include <QMetaObject>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -69,7 +69,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     std::string ip("192.168.2.");
     AS::as_api_init(ip.c_str(), F_THREAD_NAMED_VAL_FLOAT | F_STORAGE_NONE);
-
+    bas_init_status=true;
 
     //START MAIN LOOP
 
@@ -80,7 +80,13 @@ MainWindow::MainWindow(QWidget *parent)
     connect(ui->quickWidget_2,SIGNAL(statusChanged(QQuickWidget::Status)),this,SLOT(on_statusChanged(QQuickWidget::Status)));
     ui->quickWidget_2->setSource(QUrl(QStringLiteral("qrc:/assets/maps.qml")));
     pingLink=new PingSensor(this);
+    PrevTime=QTime::currentTime();
     connect(pingLink,SIGNAL(distanceConfidenceChanged()),this,SLOT(on_updateConfidence()));
+    rollLPitchCheckTimer.setInterval(10000);
+    connect(&rollLPitchCheckTimer, &QTimer::timeout, this, [this] {
+        CheckRollOrPitchChang(true);
+    });
+    rollLPitchCheckTimer.start();
 
 }
 
@@ -125,7 +131,7 @@ void MainWindow::setupToolBars()
     connect (modeComboBox , SIGNAL(clicked()) , this , SLOT(on_modeBt_clicked()) );
     ui->tabsToolBar->addWidget(modeComboBox);
 
-    QLabel *SonarLabel=new QLabel("Sonar: ");
+    SonarLabel=new QLabel("Sonar: ");
     SonarlValue = new QLabel("21.0m(95%)   ");
     SonarlValue->setFocusPolicy(Qt::NoFocus);
 
@@ -188,6 +194,8 @@ void MainWindow::setupToolBars()
     ui->tabsToolBar->setStyleSheet("QToolBar { border-left-style: none; border-right-style: none; }");
     ui->vehicleToolBar->setStyleSheet("QToolBar { border-left-style: none; border-right-style: none; }");
     ui->statusToolBar->setStyleSheet("QToolBar { border-left-style: none; border-right-style: none; }");
+    strRollValue=rollLabelValue->text();
+    strPitchValue=pitchLabelValue->text();
     ResizeToolBar();
 }
 
@@ -260,7 +268,7 @@ void MainWindow::updateVehicleData()
     yawLabelValue->setNum(yawLableCompass);
     depthLabelValue->setNum(round(depth * 100) / 100.0);
 
-    ui->qCompass->setAlt(yawLableCompass);//2020/06/19
+//    ui->qCompass->setAlt(yawLableCompass);//2020/06/19
     ui->qCompass->setYaw(yawLableCompass);
     if(ui->quickWidget_2->status()==QQuickWidget::Ready)
     {
@@ -283,6 +291,8 @@ void MainWindow::updateVehicleData()
             armCheckBox_stateChanged(Qt::Unchecked);
             
         }
+    CheckRollOrPitchChang(false);
+
 }
 
 
@@ -338,7 +348,6 @@ void MainWindow::AddToolBarSpacer(QToolBar *pToolBar,int width)
     pToolBar->addWidget(spacer);
 }
 
-
 void MainWindow::resizeEvent(QResizeEvent *event)
 {
     resizeWindowsManual();
@@ -377,8 +386,11 @@ void MainWindow::keyPressEvent(QKeyEvent *event)
             return;
          }
         qDebug() << "You Pressed Key S";
-        pressedKey.S = true;
-        manual_control.z = keyControlValue.downward;		//SEND COMMAND TO ROBOT
+        if(!SonarAlarm)
+        {
+            pressedKey.S = true;
+            manual_control.z = keyControlValue.downward;		//SEND COMMAND TO ROBOT
+        }
     }
     else if (event->key() == Qt::Key_A)
     {
@@ -435,8 +447,12 @@ void MainWindow::keyPressEvent(QKeyEvent *event)
             return;
          }
         qDebug() << "You Pressed Key Up";
-        pressedKey.Up = true;
-        manual_control.x = keyControlValue.forward;		//SEND COMMAND TO ROBOT
+        if(!SonarAlarm)
+        {
+            pressedKey.Up = true;
+            manual_control.x = keyControlValue.forward;		//SEND COMMAND TO ROBOT
+        }
+
     }
     else if (event->key() == Qt::Key_Down)
     {
@@ -805,19 +821,110 @@ void MainWindow::on_actionSonarGps_triggered()
 void MainWindow::on_updateConfidence()
 {
     //SonarlValue
-    QString strValue=QString("%1m(%2\%)   ").arg(pingLink->getDistance()/1000.0).arg(pingLink->getConfidence());
+    float fDistance=pingLink->getDistance()/1000.0;
+    float fConfidence=pingLink->getConfidence();
+    QString strValue=QString("%1m(%2\%)   ").arg(fDistance).arg(fConfidence);
     SonarlValue->setText(strValue);
+    if(fConfidence<ConfidenceSetting)
+        return;
+    QString strLabelName="Sonar: ";//normal
+    QString strNormalsty="color: rgb(0, 0, 0);";
+    QTime tcurrent=QTime::currentTime();
+    if(fDistance>WarnDistance)
+    {
+        SonarAlarm=false;
+        strLabelName="SONAR: ";
+        strNormalsty="color: rgb(0, 85, 0);";
+        PrevTime=tcurrent;
+    }
+    else if(fDistance>MinDistance&&fDistance<WarnDistance)
+    {
+        SonarAlarm=false;
+        strLabelName="WARNING SONAR: ";
+        strNormalsty="color: rgb(245, 81, 0);";
+        PrevTime=tcurrent;
+    }
+    else if(fDistance<MinDistance)
+    {
+        SonarAlarm=true;
+        strLabelName="--DANGER-- SONAR: ";
+        strNormalsty="color: rgb(255, 0, 0);";
+        manual_control.x = 0;
+        manual_control.y = 0;
+        manual_control.z = 500;
+        manual_control.r = 0;
+        manual_control.buttons = 0;
+
+        if(PrevTime.msecsTo(tcurrent)/1000>AlarmSetting)
+        {
+            armCheckBox->setChecked(false);
+            armCheckBox_stateChanged(true);
+            PrevTime=tcurrent;
+        }
+    }
+    SonarLabel->setText(strLabelName);
+    SonarLabel->setStyleSheet(strNormalsty);
+    SonarlValue->setStyleSheet(strNormalsty);
 }
 
 void MainWindow::on_statusChanged(QQuickWidget::Status status)
 {
     if(status==QQuickWidget::Ready)
     {
-        QQuickItem* pImgItem=ui->quickWidget_2->rootObject()->findChild<QQuickItem*>("markerimg");
-        if(pImgItem)
-        {
+        qmlTimer=ui->quickWidget_2->rootObject()->findChild<QObject*>("qmlTimer");
 
+
+    }
+}
+void MainWindow::on_mainStackedWidget_currentChanged(int arg1)
+{
+
+    if(qmlTimer)
+    {
+        if(arg1==2)
+        {
+            QMetaObject::invokeMethod(qmlTimer,"start",Qt::QueuedConnection);
+        }
+        else
+        {
+            QMetaObject::invokeMethod(qmlTimer,"stop",Qt::QueuedConnection);
+        }
+
+    }
+}
+void MainWindow::CheckRollOrPitchChang(bool bTimerOut)
+{
+
+    QString strRoll=rollLabelValue->text();
+    QString strPitch=pitchLabelValue->text();
+
+    if(strRollValue!=strRoll||strPitchValue!=strPitch)
+    {
+        strRollValue=strRoll;
+        strPitchValue=strPitch;
+
+        //timer restart
+        rollLPitchCheckTimer.start();
+    }
+    else
+    {
+        if(bTimerOut)
+        {
+            //restart ping
+            RestartNetWork();
         }
     }
 }
 
+void MainWindow::RestartNetWork()
+{
+    rollLPitchCheckTimer.stop();
+   // AS::as_api_deinit();
+    std::string ip("192.168.2.");
+    AS::as_api_init(ip.c_str(), F_THREAD_NAMED_VAL_FLOAT|F_STORAGE_NONE);
+    armCheckBox->setChecked(false);
+    armCheckBox_stateChanged(Qt::Unchecked);
+    //rest connect
+    pingLink->connectLink();
+    rollLPitchCheckTimer.start();
+}

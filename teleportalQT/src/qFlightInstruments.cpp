@@ -217,8 +217,11 @@ void QADI::paintEvent(QPaintEvent *)
                 painter.drawLine(QPointF(fx1, fy1), QPointF(fx2, fy2));
 
                 fy2 = fy1 + rollLineLeng+2;
+                //not draw number
+                /*
                 painter.drawText(QRectF(-50, fy2, 100, fontSize+2),
                                  Qt::AlignCenter, s);
+                */
             } else {
                 fy2 = fy1 + rollLineLeng/2;
                 painter.drawLine(QPointF(fx1, fy1), QPointF(fx2, fy2));
@@ -365,15 +368,14 @@ void QCompass::paintEvent(QPaintEvent *)
         blackPen.setWidth(1);
         painter.setPen(blackPen);
 
-        for(int i=0; i<yawLines; i++) {
-
+        for(int i=0; i<yawLines; i++) {          
             if( i == 0 ) {
                 s = "N";
                 painter.setPen(bluePen);
 
                 painter.setFont(QFont("Arial", static_cast<int>(fontSize*1.2)));
             } else if ( i == 9 ) {
-                s = "W";
+                s = "E";
                 painter.setPen(blackPen);
 
                 painter.setFont(QFont("Arial", static_cast<int>(fontSize*1.2)));
@@ -383,7 +385,7 @@ void QCompass::paintEvent(QPaintEvent *)
 
                 painter.setFont(QFont("Arial", static_cast<int>(fontSize*1.2)));
             } else if ( i == 27 ) {
-                s = "E";
+                s = "W";
                 painter.setPen(blackPen);
 
                 painter.setFont(QFont("Arial", static_cast<int>(fontSize*1.2)));
@@ -392,6 +394,7 @@ void QCompass::paintEvent(QPaintEvent *)
                 painter.setPen(blackPen);
 
                 painter.setFont(QFont("Arial", fontSize));
+
             }
 
             fx1 = 0;
@@ -410,7 +413,7 @@ void QCompass::paintEvent(QPaintEvent *)
                 painter.drawLine(QPointF(fx1, fy1), QPointF(fx2, fy2));
             }
 
-            painter.rotate(-rotAng);
+            painter.rotate(rotAng);
         }
     }
 
@@ -459,7 +462,7 @@ void QCompass::paintEvent(QPaintEvent *)
         int     yawMarkerSize = m_size/12;
         double  fx1, fy1, fx2, fy2, fx3, fy3;
 
-        painter.rotate(-m_yaw);
+        painter.rotate(m_yaw);
         painter.setBrush(QBrush(QColor(0xFF, 0x00, 0x00, 0xE0)));
 
         fx1 = 0;
@@ -476,7 +479,7 @@ void QCompass::paintEvent(QPaintEvent *)
         };
         painter.drawPolygon(points, 3);
 
-        painter.rotate(m_yaw);
+        painter.rotate(-m_yaw);
     }
 
     // draw altitude
@@ -527,7 +530,8 @@ void QCompass::paintEvent(QPaintEvent *)
         painter.drawRoundedRect(fx, fy, w, h, 0, 4);
 
         //sprintf(buf, "D: %5.2f m", m_alt);
-        sprintf(buf, "%5.2f deg", m_alt);
+        //diraw yawLableCompass 20200621
+        sprintf(buf, "%d DEG", (int)m_yaw);
         s = buf;
         painter.drawText(QRectF(fx, fy+h/4, w, h/2), Qt::AlignCenter, s);
     }
