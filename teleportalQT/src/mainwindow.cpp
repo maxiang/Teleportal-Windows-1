@@ -3,6 +3,7 @@
 #include <QMetaObject>
 #include <QGeoCoordinate>
 #include <QGamepadManager>
+#include <QMediaPlayer>
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
@@ -18,7 +19,6 @@ MainWindow::MainWindow(QWidget *parent)
     QCoreApplication::setOrganizationName("Teleportal");
     QCoreApplication::setOrganizationDomain("");
     QCoreApplication::setApplicationName("Teleportal");
-
 
     //SETUP STARTING VALUES FOR KEYBOARD INPUT
 
@@ -48,13 +48,11 @@ MainWindow::MainWindow(QWidget *parent)
     keyControlValue.turnLeftM = -300;
     keyControlValue.turnRightM = 300;
 
-
     //SETUP MISC VARIABLES
 
     m_modeIndex = 1;
     IdleTime = 1;
     firstRun = false;
-
 
     //SETUP VIDEO AND TOOLBAR
 
@@ -69,6 +67,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     LoadInIConfig();
     InitGamePad();
+
     //INITILIZE & CONNECT TO ROBOT
 
     std::string ip("192.168.2.");
@@ -76,11 +75,14 @@ MainWindow::MainWindow(QWidget *parent)
     bas_init_status=true;
 
     //START MAIN LOOP
+
     connect(this,SIGNAL(SetQMLText()),this,SLOT(on_setQmlText()));
     setupTimer();
     videoReceiver->start(ui->quickWidget);
     UpdateMapTopLableText("NO CONNECTION TO ROBOT");
-    //Load MAPS
+
+    //LOAD MAPS ETC
+
     connect(ui->quickWidget_2,SIGNAL(statusChanged(QQuickWidget::Status)),this,SLOT(on_statusChanged(QQuickWidget::Status)));
     ui->quickWidget_2->setSource(QUrl(QStringLiteral("qrc:/assets/maps.qml")));
     pingLink=new PingSensor(this);
@@ -104,6 +106,7 @@ MainWindow::~MainWindow()
     delete ui;
 }
 
+
 void MainWindow::setupToolBars()
 {
     //SETUP TOOLBAR
@@ -124,14 +127,13 @@ void MainWindow::setupToolBars()
     connect(armCheckBox,SIGNAL(clicked(bool)),
                      this,SLOT(armCheckBox_stateChanged(bool)));
     UpdateMapTopLableText("NO CONNECTION TO ROBOT");
-  //  ui->vehicleToolBar->addSeparator();
     AddToolBarSpacer(ui->tabsToolBar,100);
     QLabel *modeLable = new QLabel(this);
     modeLable->setText("DIVE MODE: ");
     modeLable->setStyleSheet("font: 87 10pt \"Arial Black\"");
     ui->tabsToolBar->addWidget(modeLable);
     modeComboBox = new QPushButton(this);
-    modeComboBox->setText("Depth Hold");
+    modeComboBox->setText("Unknown");
     modeComboBox->setStyleSheet("font: 87 10pt \"Arial Black\"");
     modeComboBox->setFocusPolicy(Qt::NoFocus);
     modeComboBox->show();
@@ -139,10 +141,11 @@ void MainWindow::setupToolBars()
     ui->tabsToolBar->addWidget(modeComboBox);
 
     SonarLabel=new QLabel("SONAR: ");
-    SonarlValue = new QLabel("21.0 METERS (95%)   ");
+    SonarlValue = new QLabel("0.0 METERS (0%)   ");
     SonarlValue->setFocusPolicy(Qt::NoFocus);
     SonarLabel->setStyleSheet("font: 87 10pt \"Arial Black\"");
     SonarlValue->setStyleSheet("font: 87 10pt \"Arial Black\"");
+    
     QLabel *yawLabel = new QLabel("Compass: ", this);
     yawLabel->setFocusPolicy(Qt::NoFocus);
     yawLabelValue = new QLabel("0.00", this);
@@ -158,8 +161,7 @@ void MainWindow::setupToolBars()
     rollLabelValue = new QLabel("0.00", this);
     rollLabelValue->setFocusPolicy(Qt::NoFocus);
 
-
-    //HIDE UNUSED ROLL & PITCH VALUES
+    //HIDE UNUSED YAW, PITCH & ROLL VALUES FROM TOOLBAR
 
     pitchLabel->setVisible(false);
     pitchLabelValue->setVisible(false);
@@ -175,12 +177,10 @@ void MainWindow::setupToolBars()
     depthLabelValue->setStyleSheet("font: 87 10pt \"Arial Black\"");
     depthLabel->setStyleSheet("font: 87 10pt \"Arial Black\"");
 
-
     yawLabelValue->setFixedWidth(50);
     pitchLabelValue->setFixedWidth(50);
     rollLabelValue->setFixedWidth(50);
     depthLabelValue->setFixedWidth(100);
-
 
     AddToolBarSpacer(ui->statusToolBar);
     ui->statusToolBar->addWidget(SonarLabel);
@@ -193,8 +193,6 @@ void MainWindow::setupToolBars()
     ui->statusToolBar->addWidget(rollLabelValue);
     ui->statusToolBar->addWidget(depthLabel);
     ui->statusToolBar->addWidget(depthLabelValue);
-
-
 
     QLabel *bannerLabel = new QLabel(this);
     bannerLabel->setFixedWidth(145);
@@ -215,25 +213,20 @@ void MainWindow::setupToolBars()
 
 void MainWindow::on_modeBt_clicked(){
 
-    //CHANGES MODE BUTTON ON CLICK、
-    /*
-    m_modeIndex ++;
-    m_modeIndex %= 3;
-    modeComboBox_currentIndexChanged(m_modeIndex);
-    */
-    //add new 20200629
+	//WHEN USER CLICKS ON DIVE MODE BUTTON - CHANGE MODE
+
     QKeyEvent* event=nullptr;
     if(modeComboBox->text()=="Depth Hold")
     {
-        event=new QKeyEvent(QEvent::KeyPress,Qt::Key_B, Qt::NoModifier);
+        event=new QKeyEvent(QEvent::KeyPress,Qt::Key_1, Qt::NoModifier);
     }
     else if(modeComboBox->text()=="Stability")
     {
-        event=new QKeyEvent(QEvent::KeyPress,Qt::Key_M, Qt::NoModifier);
+        event=new QKeyEvent(QEvent::KeyPress,Qt::Key_3, Qt::NoModifier);
     }
     else if(modeComboBox->text()=="Manual")
     {
-        event=new QKeyEvent(QEvent::KeyPress,Qt::Key_H, Qt::NoModifier);
+        event=new QKeyEvent(QEvent::KeyPress,Qt::Key_2, Qt::NoModifier);
     }
     if(event)
     {
@@ -244,7 +237,7 @@ void MainWindow::on_modeBt_clicked(){
 
 void MainWindow::setupTimer()
 {
-    //MAIN TIMER LOOP
+    //SETUP TIMER LOOP
 
     QObject::connect(&vehicleDataUpdateTimer, &QTimer::timeout, this, &MainWindow::updateVehicleData);
     vehicleDataUpdateTimer.setInterval(25);
@@ -258,28 +251,34 @@ void MainWindow::setupTimer()
 
 void MainWindow::updateVehicleData()
 {
-    //UPDATES ROBOT VARIABLES
+    //UPDATES ROBOT VARIABLES & MAIN TIMING LOOP
 
     if (!AS::as_api_check_vehicle(currentVehicle))
     {
+    	// IF ROBOT IS NOT CONNECTED
         return;
     }
 
     if (!firstRun)
     {
-        //CHANGE MODE TO STABALIZE ON STARTUP
+        // SEND COMMANDS TO ROBOT ON STARTUP (DISARM, STABILITY MODE)
 
-            armCheckBox->setChecked(false);
+            armCheckBox->setChecked(false);		// DISARM ROBOT
             armCheckBox_stateChanged(true);
-           // modeComboBox_currentIndexChanged(m_modeIndex);
             firstRun = true;
-            QGuiApplication::sendEvent(this,new QKeyEvent(QEvent::KeyPress,Qt::Key_B, Qt::NoModifier));
+
+            m_modeIndex = 1;
+            manual_control.buttons = 8;             // STABILITY MODE
+            modeComboBox->setText("Stability");
+
+            PlayMediaFileMapText("reconnect");
     }
 
     AS::as_api_get_vehicle_data2(currentVehicle, vehicle_data);
 
     if (vehicle_data == nullptr)
     {
+    	// IF ROBOT IS NOT CONNECTED
         return;
     }
 
@@ -301,8 +300,9 @@ void MainWindow::updateVehicleData()
     yawLabelValue->setNum(yawLableCompass);
     depthLabelValue->setNum(round(depth * 100) / 100.0);
     depthLabelValue->setText(depthLabelValue->text()+" METERS");
-//    ui->qCompass->setAlt(yawLableCompass);//2020/06/19
+
     ui->qCompass->setYaw(yawLableCompass);
+
     if(ui->quickWidget_2->status()==QQuickWidget::Ready)
     {
         QQuickItem* pImgItem=ui->quickWidget_2->rootObject()->findChild<QQuickItem*>("markerimg");
@@ -312,7 +312,8 @@ void MainWindow::updateVehicleData()
 
         }
     }
-    //IF USER IS IDLE FOR 180 SEC DISARM ROBOT
+
+    	// IF USER IS IDLE FOR 180 SEC DISARM ROBOT
 
         LASTINPUTINFO LastInput = {};
         LastInput.cbSize = sizeof(LastInput);
@@ -322,8 +323,9 @@ void MainWindow::updateVehicleData()
         {
             armCheckBox->setChecked(false);
             armCheckBox_stateChanged(Qt::Unchecked);
-
+            PlayMediaFileMapText("timeout");
         }
+
     CheckRollOrPitchChang(false);
     UpdateModeLable();
 
@@ -335,11 +337,11 @@ void MainWindow::manualControl()
         //MAIN ROBOT CONTROL LOOP
 
     if (armCheckBox->isChecked()&&
-        AS::as_api_check_vehicle(currentVehicle))
+        AS::as_api_check_vehicle(currentVehicle))		// IF ROBOT IS ARMED AND CONNECTED
     {
         AS::as_api_manual_control(manual_control.x, manual_control.y,
                                   manual_control.z, manual_control.r,
-                                  manual_control.buttons, currentVehicle);
+                                  manual_control.buttons, currentVehicle);		// SEND COMMANDS TO ROBOT
     }
 }
 
@@ -347,9 +349,7 @@ void MainWindow::manualControl()
 void MainWindow::resizeWindowsManual()
 {
     int m_width = ui->videoPage->width();
-
     ui->quickWidget->setGeometry(0, 0, m_width, ui->videoPage->height());
-
     ui->qCompass->setGeometry(m_width - 160, 0, 160, 160);
     ui->qADI->setGeometry(m_width - 160, 160, 160, 160);
     ResizeToolBar();
@@ -391,16 +391,17 @@ void MainWindow::resizeEvent(QResizeEvent *event)
 
 void MainWindow::keyPressEvent(QKeyEvent *event)
 {
-    //KEYBOARD CONTROLS FOR ROBOT
+    // KEYBOARD CONTROLS FOR ROBOT
 
     if (event->isAutoRepeat())
     {
+    	// IF THE KEY COMMAND IS THE SAME
         return;
     }
 
     if (event->key() == Qt::Key_W)
     {
-        if (!armCheckBox->isChecked())		//CHECK IF ROBOT IS ARMED, IF NOT REARM ROBOT
+        if (!armCheckBox->isChecked())		// CHECK IF ROBOT IS ARMED, IF NOT REARM ROBOT
         {
             armCheckBox->setChecked(true);
             armCheckBox_stateChanged(true);
@@ -422,7 +423,7 @@ void MainWindow::keyPressEvent(QKeyEvent *event)
          }
         qDebug() << "You Pressed Key S";
         UpdateKeyControlValue();
-        if(!SonarAlarm)
+        if(!SonarAlarm)					// IF PROXIMITY ALERT THEN DONT SEND COMMAND
         {
             pressedKey.S = true;
             manual_control.z = keyControlValue.downward;		//SEND COMMAND TO ROBOT
@@ -486,7 +487,7 @@ void MainWindow::keyPressEvent(QKeyEvent *event)
          }
         qDebug() << "You Pressed Key Up";
         UpdateKeyControlValue();
-        if(!SonarAlarm)
+        if(!SonarAlarm)					// IF PROXIMITY ALERT THEN DONT SEND COMMAND
         {
             pressedKey.Up = true;
             manual_control.x = keyControlValue.forward;		//SEND COMMAND TO ROBOT
@@ -580,32 +581,13 @@ void MainWindow::keyPressEvent(QKeyEvent *event)
          UpdateKeyControlValue();
          manual_control.buttons = 8192;		//SEND COMMAND TO ROBOT
      }
-
-        //KEYBOARD COMMANDS TO CHANGE MODE OF ROBOT
-
-      else if (event->key() == Qt::Key_1)
-     {
-         qDebug() << "You Pressed Key 1";
-         UpdateKeyControlValue();
-         manual_control.buttons = 2;		//SEND COMMAND TO ROBOT
-     }
-   else if (event->key() == Qt::Key_2)
-     {
-         qDebug() << "You Pressed Key 2";
-         UpdateKeyControlValue();
-         manual_control.buttons = 8;		//SEND COMMAND TO ROBOT
-     }
-     else if (event->key() == Qt::Key_3)
-     {
-         qDebug() << "You Pressed Key 3";
-         UpdateKeyControlValue();
-         manual_control.buttons = 4;		//SEND COMMAND TO ROBOT
-     }
     else
     {
         qDebug() << "You Pressed NOT supported Key";
     }
-    HandleNewKey(event);
+
+    HandleNewKey(event);				// ALSO DO OTHER KEYBOARD COMMANDS (MODE, ARM)
+
     qDebug() << "x: " << manual_control.x;
     qDebug() << "y: " << manual_control.y;
     qDebug() << "z: " << manual_control.z;
@@ -615,7 +597,7 @@ void MainWindow::keyPressEvent(QKeyEvent *event)
 
 void MainWindow::keyReleaseEvent(QKeyEvent *event)
 {
-    //ON KEY RELEASE CHANGE ROBOT COMMANDS BACK TO IDLE VALUES
+    // ON KEY RELEASE CHANGE ROBOT COMMANDS BACK TO IDLE VALUES
 
     if (event->isAutoRepeat())
     {
@@ -734,34 +716,30 @@ void MainWindow::keyReleaseEvent(QKeyEvent *event)
         }
         pressedKey.Right = false;
     }
-            //ADAM: Added new buttons
- else if (event->key() == Qt::Key_R)
+ 
+ 	else if (event->key() == Qt::Key_R)		// CAMERA TILT UP
     {
         qDebug() << "You Released Key R";
         UpdateKeyControlValue(false);
         manual_control.buttons = 0;
-
     }
- else if (event->key() == Qt::Key_F)
+ 	else if (event->key() == Qt::Key_F)		// CAMERA TILT DOWN
     {
         qDebug() << "You Released Key F";
         UpdateKeyControlValue(false);
         manual_control.buttons = 0;
-
     }
- else if (event->key() == Qt::Key_T)
+ 	else if (event->key() == Qt::Key_T)  	// LIGHTS BRIGHTER
     {
         qDebug() << "You Released Key T";
         UpdateKeyControlValue(false);
         manual_control.buttons = 0;
-
     }
- else if (event->key() == Qt::Key_G)
+ 	else if (event->key() == Qt::Key_G)		// LIGHTS DIMMER
     {
         qDebug() << "You Released Key G";
         UpdateKeyControlValue(false);
         manual_control.buttons = 0;
-
     }
     else
     {
@@ -801,9 +779,7 @@ void MainWindow::on_actionMenu_triggered()
 
 void MainWindow::modeComboBox_currentIndexChanged(int index)
 {
-            //CHANGE MODE OF ROBOT WHEN BUTTON IS CLICKED
-
-            //29062020 Adam: So this whole thing doesn't run anymore?
+            // CHANGE MODE OF ROBOT WHEN BUTTON IS CLICKED (WORKING?)
 
     if (!AS::as_api_check_vehicle(currentVehicle))
     {
@@ -836,9 +812,9 @@ void MainWindow::modeComboBox_currentIndexChanged(int index)
 
 void MainWindow::armCheckBox_stateChanged(bool checked)
 {
-            //ARM & DISARM ROBOT
+            // ARM & DISARM ROBOT
 
-    if (!AS::as_api_check_vehicle(currentVehicle))
+    if (!AS::as_api_check_vehicle(currentVehicle))		// IF ROBOT IS NOT CONNECTED
     {
         qDebug() << "vehicle: " << currentVehicle << "is not ready!";
         armCheckBox->setChecked(false);
@@ -848,15 +824,16 @@ void MainWindow::armCheckBox_stateChanged(bool checked)
         return;
     }
 
-    if (armCheckBox->isChecked())
+    if (armCheckBox->isChecked())						// IF ROBOT IS ARMED
     {
         AS::as_api_vehicle_arm(currentVehicle, 1);
         armCheckBox->setStyleSheet("color: rgb(255, 0, 0);font: 87 12pt \"Arial Black\";");
         armCheckBox->setText("ROBOT ARMED");
         UpdateMapTopLableText("");
+        PlayMediaFileMapText("arm");
         qDebug() << "ARM";
     }
-    else
+    else												// IF ROBOT IS DISARMED
     {
         manual_control.x = 0;
         manual_control.y = 0;
@@ -868,6 +845,7 @@ void MainWindow::armCheckBox_stateChanged(bool checked)
         armCheckBox->setStyleSheet("color: rgb(0, 206, 0);font: 87 12pt \"Arial Black\";");
         armCheckBox->setText("CLICK TO START - ROBOT UNARMED");
         UpdateMapTopLableText("");
+        PlayMediaFileMapText("disarm");
         qDebug() << "DISARM";
     }
 }
@@ -881,12 +859,13 @@ void MainWindow::on_actionSonarGps_triggered()
     ui->actionMenu->setDisabled(false);
     ui->actionVideo->setChecked(false);
     ui->actionVideo->setDisabled(false);
-
 }
+
 
 void MainWindow::on_updateConfidence()
 {
-    //SonarlValue
+    // Update Sonar Value
+
     float fDistance=pingLink->getDistance()/1000.0;
     float fConfidence=pingLink->getConfidence();
     QString strValue=QString("%1 METERS (%2\%)   ").arg(fDistance).arg(fConfidence);
@@ -914,20 +893,22 @@ void MainWindow::on_updateConfidence()
     else if(fDistance<MinDistance)
     {
         SonarAlarm=true;
-        strLabelName="--DANGER-- SONAR: ";
+        strLabelName="DANGER SONAR: ";
         strNormalsty="color: rgb(255, 0, 0);";
-        manual_control.x = 0;
-        manual_control.y = 0;
-        manual_control.z = 500;
-        manual_control.r = 0;
-        manual_control.buttons = 0;
+        //manual_control.x = 0;
+        //manual_control.y = 0;
+        //manual_control.z = 500;
+        //manual_control.r = 0;
+        //manual_control.buttons = 0;
         mapTopLableText="PROXIMITY ALARM";
+        //PlayMediaFileMapText("proximity");
         if(PrevTime.msecsTo(tcurrent)/1000>AlarmSetting)
         {
             armCheckBox->setChecked(false);
             armCheckBox_stateChanged(true);
             PrevTime=tcurrent;
             mapTopLableText="OBSTACLE AVOIDANCE ENGAGED - DISARMING ROBOT";
+            PlayMediaFileMapText("collision");
         }
 
     }
@@ -938,41 +919,37 @@ void MainWindow::on_updateConfidence()
     UpdateMapTopLableText(mapTopLableText);
 }
 
+
 void MainWindow::on_statusChanged(QQuickWidget::Status status)
 {
     if(status==QQuickWidget::Ready)
     {
-
         qmlTimer=ui->quickWidget_2->rootObject()->findChild<QObject*>("qmlTimer");
         //use ini file Coordinates
         UpdateMapCenterCoordinates(fMapCoordinates);
         UpdateMarkerCoordinates(fMarkerCoordinates);
-
-
     }
 }
+
+
 void MainWindow::on_mainStackedWidget_currentChanged(int arg1)
 {
-
     if(qmlTimer)
     {
         if(arg1==2)
         {
            QMetaObject::invokeMethod(qmlTimer,"start",Qt::QueuedConnection);
-
         }
         else
         {
             QMetaObject::invokeMethod(qmlTimer,"stop",Qt::QueuedConnection);
         }
-
     }
 }
 
 
 void MainWindow::CheckRollOrPitchChang(bool bTimerOut)
 {
-
     QString strRoll=rollLabelValue->text();
     QString strPitch=pitchLabelValue->text();
 
@@ -988,16 +965,16 @@ void MainWindow::CheckRollOrPitchChang(bool bTimerOut)
     {
         if(bTimerOut)
         {
-            //restart ping
+            // restart ping and connection to robot
             RestartNetWork();
         }
     }
 }
 
-void MainWindow::RestartNetWork()
+
+void MainWindow::RestartNetWork()	// IF ROBOT DISCONNECTS RESTART
 {
     rollLPitchCheckTimer.stop();
-
     vehicleDataUpdateTimer.stop();
     manualControlTimer.stop();
     currentVehicle=1;
@@ -1014,21 +991,20 @@ void MainWindow::RestartNetWork()
     rollLPitchCheckTimer.start();
     vehicleDataUpdateTimer.start();
     manualControlTimer.start();
-
 }
 
-void MainWindow::LoadInIConfig()
+
+void MainWindow::LoadInIConfig()		// LOAD CONFIG FILE
 {
     QSettings sets("Teleportal.ini",QSettings::IniFormat);
     if(!sets.allKeys().size())
     {
-        //def value
-
+        // MAP GPS 
         sets.setValue("GPS/MapCoordinates",QStringList{"-14.0094983494893","80.1233232234234"});
         sets.setValue("GPS/MarkerCoordinates",QStringList{"-14.0094983494893","80.1233232234234"});
         sets.setValue("GPS/ardusubCoordinates",false);
 
-        //press
+        // KEYBOARD COMMAND PRESS
         sets.setValue("KEYBOARD_KEYPRESS/forward",500);
         sets.setValue("KEYBOARD_KEYPRESS/backward",-500);
         sets.setValue("KEYBOARD_KEYPRESS/leftward",-500);
@@ -1040,7 +1016,7 @@ void MainWindow::LoadInIConfig()
         sets.setValue("KEYBOARD_KEYPRESS/turnLeftM",-500);
         sets.setValue("KEYBOARD_KEYPRESS/turnRightM",500);
 
-        //hold
+        // KEYBOARD COMMAND HOLD
         sets.setValue("KEYBOARD_KEYHOLD/forward",999);
         sets.setValue("KEYBOARD_KEYHOLD/backward",-999);
         sets.setValue("KEYBOARD_KEYHOLD/leftward",-999);
@@ -1052,7 +1028,7 @@ void MainWindow::LoadInIConfig()
         sets.setValue("KEYBOARD_KEYHOLD/turnLeftM",-300);
         sets.setValue("KEYBOARD_KEYHOLD/turnRightM",300);
 
-        // hold SONAR WARNING
+        // KEYBOARD COMMAND HOLD (SONAR WARNING)
         sets.setValue("KEYBOARD_KEYHOLD_SONAR_WARNING/forward",500);
         sets.setValue("KEYBOARD_KEYHOLD_SONAR_WARNING/backward",-999);
         sets.setValue("KEYBOARD_KEYHOLD_SONAR_WARNING/leftward",-999);
@@ -1064,7 +1040,7 @@ void MainWindow::LoadInIConfig()
         sets.setValue("KEYBOARD_KEYHOLD_SONAR_WARNING/turnLeftM",-300);
         sets.setValue("KEYBOARD_KEYHOLD_SONAR_WARNING/turnRightM",300);
 
-        //PRESS SONAR WARNING
+        // KEYBOARD COMMAND PRESS (SONAR WARNING)
         sets.setValue("KEYBOARD_KEYPRESS_SONAR_WARNING/forward",500);
         sets.setValue("KEYBOARD_KEYPRESS_SONAR_WARNING/backward",-500);
         sets.setValue("KEYBOARD_KEYPRESS_SONAR_WARNING/leftward",-500);
@@ -1076,7 +1052,7 @@ void MainWindow::LoadInIConfig()
         sets.setValue("KEYBOARD_KEYPRESS_SONAR_WARNING/turnLeftM",-500);
         sets.setValue("KEYBOARD_KEYPRESS_SONAR_WARNING/turnRightM",500);
 
-        //KEYBOARD - KEYHOLD - SONAR ALARM
+        // KEYBOARD COMMAND HOLD (SONAR ALARM)
         sets.setValue("KEYBOARD_KEYHOLD_SONAR_ALARM/forward",0);
         sets.setValue("KEYBOARD_KEYHOLD_SONAR_ALARM/backward",-999);
         sets.setValue("KEYBOARD_KEYHOLD_SONAR_ALARM/leftward",-999);
@@ -1088,7 +1064,7 @@ void MainWindow::LoadInIConfig()
         sets.setValue("KEYBOARD_KEYHOLD_SONAR_ALARM/turnLeftM",-300);
         sets.setValue("KEYBOARD_KEYHOLD_SONAR_ALARM/turnRightM",300);
 
-        //KEYBOARD - KEYPRESS - SONAR ALARM
+        // KEYBOARD COMMAND PRESS (SONAR ALARM)
         sets.setValue("KEYBOARD_KEYPRESS_SONAR_ALARM/forward",0);
         sets.setValue("KEYBOARD_KEYPRESS_SONAR_ALARM/backward",-500);
         sets.setValue("KEYBOARD_KEYPRESS_SONAR_ALARM/leftward",-500);
@@ -1100,25 +1076,25 @@ void MainWindow::LoadInIConfig()
         sets.setValue("KEYBOARD_KEYPRESS_SONAR_ALARM/turnLeftM",-500);
         sets.setValue("KEYBOARD_KEYPRESS_SONAR_ALARM/turnRightM",500);
 
-
+        // SONAR VALUES
         sets.setValue("SONAR/WarnDistance",1.5);
         sets.setValue("SONAR/MinDistance",0.75);
         sets.setValue("SONAR/AlarmSetting",3);
         sets.setValue("SONAR/ConfidenceSetting",90);
         sets.setValue("SONAR/PingInterval",250);
-        //gamepad
 
+        // GAMEPAD CONFIG
         sets.setValue("GAMEPAD/buttonL1","Qt::Key_F");
         sets.setValue("GAMEPAD/buttonR1","Qt::Key_R");
         sets.setValue("GAMEPAD/buttonUp","Qt::Key_T");
         sets.setValue("GAMEPAD/buttonDown","Qt::Key_G");
-        //new key
-        sets.setValue("GAMEPAD/buttonSelect","Qt::Key_O");
-        sets.setValue("GAMEPAD/buttonStart","Qt::Key_L");
-        sets.setValue("GAMEPAD/buttonX","Qt::Key_H");
-        sets.setValue("GAMEPAD/buttonY","Qt::Key_B");
-        sets.setValue("GAMEPAD/buttonB","Qt::Key_M");
+        sets.setValue("GAMEPAD/buttonSelect","Qt::Key_4");
+        sets.setValue("GAMEPAD/buttonStart","Qt::Key_5");
+        sets.setValue("GAMEPAD/buttonX","Qt::Key_2");
+        sets.setValue("GAMEPAD/buttonY","Qt::Key_1");
+        sets.setValue("GAMEPAD/buttonB","Qt::Key_3");
 
+        // USER TIMEOUT VALUE
         sets.setValue("MISC/IdleSetting",180);
     }
 
@@ -1126,7 +1102,6 @@ void MainWindow::LoadInIConfig()
     fMarkerCoordinates=sets.value("GPS/MarkerCoordinates").toStringList();
     bardusubCoordinates=sets.value("GPS/ardusubCoordinates").toBool();
 
-    //keyControlValue
     keyControlValue_Press.forward=sets.value("KEYBOARD_KEYPRESS/forward").toInt();
     keyControlValue_Press.backward=sets.value("KEYBOARD_KEYPRESS/backward").toInt();
     keyControlValue_Press.leftward=sets.value("KEYBOARD_KEYPRESS/leftward").toInt();
@@ -1193,7 +1168,6 @@ void MainWindow::LoadInIConfig()
     keyControlValue_Alarm.turnLeftM=sets.value("KEYBOARD_KEYPRESS_SONAR_ALARM/turnLeftM").toInt();
     keyControlValue_Alarm.turnRightM=sets.value("KEYBOARD_KEYPRESS_SONAR_ALARM/turnRightM").toInt();
 
-
     WarnDistance=sets.value("SONAR/WarnDistance").toFloat();
     MinDistance=sets.value("SONAR/MinDistance").toFloat();
     AlarmSetting=sets.value("SONAR/AlarmSetting").toInt();
@@ -1201,8 +1175,8 @@ void MainWindow::LoadInIConfig()
     PingSensor::_firmwareDefaultPingInterval=sets.value("SONAR/PingInterval").toInt();
     iIdleSetting=sets.value("MISC/IdleSetting").toUInt();
 
-
 }
+
 
 void MainWindow::UpdateMapCenterCoordinates(QStringList coord)
 {
@@ -1214,6 +1188,7 @@ void MainWindow::UpdateMapCenterCoordinates(QStringList coord)
 
 }
 
+
 void MainWindow::UpdateMarkerCoordinates(QStringList coord)
 {
     QObject* markerItem=ui->quickWidget_2->rootObject()->findChild<QObject*>("markerItem");
@@ -1223,100 +1198,62 @@ void MainWindow::UpdateMarkerCoordinates(QStringList coord)
     markerItem->setProperty("coordinate",QVariant::fromValue(qmlCoord));
 }
 
+
 void MainWindow::UpdateModeLable()
 {
-    //modeComboBox Manual, Stability, Depth hold
-    //F_THREAD_FETCH_FULL_PARAM
-
-/*  29062020 Adam: Removed due to bug
-
-    QString strMode="unknown";
-    if(vehicle_data)
-    {
-
-            if(vehicle_data->custom_mode==AS::ALT_HOLD)
-            {
-                strMode="Depth hold";
-            }
-            else if(vehicle_data->custom_mode==AS::MANUAL)
-            {
-                strMode="Manual";
-            }
-            else
-            {
-                strMode="Stability";
-            }
-            if(vehicle_data->system_status==AS::SYS_ARMED&&!armCheckBox->isChecked())
-            {
-                armCheckBox->setChecked(true);
-                armCheckBox_stateChanged(true);
-            }
-            else if(vehicle_data->system_status==AS::SYS_DISARMED&&armCheckBox->isChecked())
-            {
-                armCheckBox->setChecked(false);
-                armCheckBox_stateChanged(Qt::Unchecked);
-            }
-
-
-    }
-    modeComboBox->setText(strMode);
-    */
+    // THIS HAS BEEN REMOVED
 }
+
 
 void MainWindow::HandleNewKey(QKeyEvent *event)
 {
-    if(event->key()==Qt::Key_O)
+    if(event->key()==Qt::Key_4)		// DISARM ROBOT
     {
-        //Disarm
         if(armCheckBox->isChecked())
         {
             armCheckBox->setChecked(false);
             armCheckBox_stateChanged(false);
         }
     }
-    else if(event->key()==Qt::Key_L)
+    else if(event->key()==Qt::Key_5)		// ARM ROBOT
     {
-        //arm
         if(!armCheckBox->isChecked())
         {
             armCheckBox->setChecked(true);
             armCheckBox_stateChanged(true);
         }
     }
-    else if(event->key()==Qt::Key_H)
+    else if(event->key()==Qt::Key_2)		// DEPTH HOLD MODE
     {
-        //Depth Hold Mode
             m_modeIndex = 2;
-            //AS::as_api_set_mode(currentVehicle,AS::ALT_HOLD);            //29062020 Adam: Trying old system instead
             manual_control.buttons = 4;
             modeComboBox->setText("Depth Hold");
+            PlayMediaFileMapText("depth");
 
     }
-    else if(event->key()==Qt::Key_B)
+    else if(event->key()==Qt::Key_1)		// STABALISE MODE
     {
-        //Stablilize
             m_modeIndex = 1;
-            //AS::as_api_set_mode(currentVehicle,AS::STABILIZE);            //29062020 Adam: Trying old system instead
             manual_control.buttons = 8;
             modeComboBox->setText("Stability");
-
+            PlayMediaFileMapText("stability");
     }
-    else if(event->key()==Qt::Key_M)
+    else if(event->key()==Qt::Key_3)		// MANUAL MODE
     {
-        //Manual
             m_modeIndex = 0;
-            //AS::as_api_set_mode(currentVehicle,AS::MANUAL);					//29062020 Adam: Trying old system instead
             manual_control.buttons = 2;
             modeComboBox->setText("Manual");
-
+            PlayMediaFileMapText("manual");
     }
 }
+
 
 void MainWindow::InitGamePad()
 {
     connect(QGamepadManager::instance(),SIGNAL(gamepadConnected(int)), this,SLOT(on_gamepadConnected(int)));
     connect(QGamepadManager::instance(),SIGNAL(gamepadDisconnected(int)), this,SLOT(on_gamepadDisconnected(int)));
 }
+
 
 void MainWindow::LoadMapingKey()
 {
@@ -1325,11 +1262,11 @@ void MainWindow::LoadMapingKey()
         {"Qt::Key_R",Qt::Key_R},
         {"Qt::Key_T",Qt::Key_T},
         {"Qt::Key_G",Qt::Key_G},
-        {"Qt::Key_O",Qt::Key_O},
-        {"Qt::Key_L",Qt::Key_L},
-        {"Qt::Key_H",Qt::Key_H},
-        {"Qt::Key_B",Qt::Key_B},
-        {"Qt::Key_M",Qt::Key_M}
+        {"Qt::Key_4",Qt::Key_4},
+        {"Qt::Key_5",Qt::Key_5},
+        {"Qt::Key_2",Qt::Key_2},
+        {"Qt::Key_1",Qt::Key_1},
+        {"Qt::Key_3",Qt::Key_3}
     };
     if(_gameKeyNavigation)
     {
@@ -1339,11 +1276,11 @@ void MainWindow::LoadMapingKey()
          _gameKeyNavigation->setUpKey(keymap[sets.value("GAMEPAD/buttonUp","Qt::Key_T").toString()]);
          _gameKeyNavigation->setDownKey(keymap[sets.value("GAMEPAD/buttonDown","Qt::Key_G").toString()]);
          //new key
-         _gameKeyNavigation->setButtonSelectKey(keymap[sets.value("GAMEPAD/buttonSelect","Qt::Key_O").toString()]);
-         _gameKeyNavigation->setButtonStartKey(keymap[sets.value("GAMEPAD/buttonStart","Qt::Key_L").toString()]);
-         _gameKeyNavigation->setButtonXKey(keymap[sets.value("GAMEPAD/buttonX","Qt::Key_H").toString()]);
-         _gameKeyNavigation->setButtonYKey(keymap[sets.value("GAMEPAD/buttonY","Qt::Key_B").toString()]);
-         _gameKeyNavigation->setButtonBKey(keymap[sets.value("GAMEPAD/buttonB","Qt::Key_M").toString()]);
+         _gameKeyNavigation->setButtonSelectKey(keymap[sets.value("GAMEPAD/buttonSelect","Qt::Key_4").toString()]);
+         _gameKeyNavigation->setButtonStartKey(keymap[sets.value("GAMEPAD/buttonStart","Qt::Key_5").toString()]);
+         _gameKeyNavigation->setButtonXKey(keymap[sets.value("GAMEPAD/buttonX","Qt::Key_2").toString()]);
+         _gameKeyNavigation->setButtonYKey(keymap[sets.value("GAMEPAD/buttonY","Qt::Key_1").toString()]);
+         _gameKeyNavigation->setButtonBKey(keymap[sets.value("GAMEPAD/buttonB","Qt::Key_3").toString()]);
 
          //unused gamepad buttons
          _gameKeyNavigation->setLeftKey(Qt::Key_unknown);
@@ -1357,7 +1294,8 @@ void MainWindow::LoadMapingKey()
     }
 }
 
-void MainWindow::UpdateKeyControlValue(bool bPress)
+
+void MainWindow::UpdateKeyControlValue(bool bPress)			// IF IN SONAR WARNING OR ALARM STATE CHANGE KEYBOARD CONTROL VALUES
 {
     keyControlValue_t keyControlValue_Up;
     keyControlValue_t keyControlValue_Down;
@@ -1387,6 +1325,7 @@ void MainWindow::UpdateKeyControlValue(bool bPress)
     }
 }
 
+
 void MainWindow::on_setQmlText()
 {
     QObject* markerItem=ui->quickWidget->rootObject()->findChild<QObject*>("videoLabel");
@@ -1402,9 +1341,9 @@ void MainWindow::on_setQmlText()
     }
 }
 
+
 void MainWindow::UpdateMapTopLableText(QString strTip)
 {
-
     mapTextCache=strTip;
     if(bmapState)
         return;
@@ -1417,13 +1356,69 @@ void MainWindow::UpdateMapTopLableText(QString strTip)
             emit SetQMLText();
         });
     }
-
-
-
-
 }
 
-void MainWindow::on_axisLeftXChanged(double value)
+
+void MainWindow::PlayMediaFileMapText(QString strText)
+{
+	// PLAY MP3 FILE
+	// PlayMediaFileMapText("disarm");
+	// fileUrl=QUrl::fromLocalFile("/Users/me/Music/coolsong.mp3");
+	// fileUrl=QUrl("http://");
+	// fileUrl=QUrl("qrc:/assets/mp3/disarm.mp3");
+
+    if(!player)
+    {
+        player = new QMediaPlayer;
+    }
+    QUrl fileUrl;//local or net
+    if(strText=="disarm")
+    {
+        fileUrl=QUrl("qrc:/assets/mp3/disarm.mp3");
+    }
+    else if(strText=="arm")
+    {
+        fileUrl=QUrl("qrc:/assets/mp3/arm.mp3");
+    }
+     else if(strText=="stability")
+    {
+        fileUrl=QUrl("qrc:/assets/mp3/stability.mp3");
+    }
+     else if(strText=="depth")
+    {
+        fileUrl=QUrl("qrc:/assets/mp3/depth.mp3");
+    }
+     else if(strText=="manual")
+    {
+        fileUrl=QUrl("qrc:/assets/mp3/manual.mp3");
+    }
+     else if(strText=="proximity")
+    {
+        fileUrl=QUrl("qrc:/assets/mp3/proximity.mp3");
+    }
+     else if(strText=="collision")
+    {
+        fileUrl=QUrl("qrc:/assets/mp3/collision.mp3");
+    }
+     else if(strText=="timeout")
+    {
+        fileUrl=QUrl("qrc:/assets/mp3/timeout.mp3");
+    }
+    else if(strText=="reconnect")
+    {
+        fileUrl=QUrl("qrc:/assets/mp3/reconnect.mp3");
+    }
+    else if(strText=="goodbye")
+    {
+        fileUrl=QUrl("qrc:/assets/mp3/goodbye.mp3");
+    }
+    player->setMedia(fileUrl);
+    player->setVolume(50);
+    player->play();
+}
+
+
+void MainWindow::on_axisLeftXChanged(double value)		// GAME PAD X AXIS
 {
     //value rang -1.0 1.0
     QKeyEvent *event=nullptr;
@@ -1451,7 +1446,8 @@ void MainWindow::on_axisLeftXChanged(double value)
     }
 }
 
-void MainWindow::on_axisLeftYChanged(double value)
+
+void MainWindow::on_axisLeftYChanged(double value)		// GAME PAD Y AXIS
 {
     QKeyEvent *event=nullptr;
     if(value<-0.8)
@@ -1461,7 +1457,7 @@ void MainWindow::on_axisLeftYChanged(double value)
     }
     else if(value>0.8)
     {
-        //Reverse
+        //reverse
         event=new QKeyEvent(QEvent::KeyPress,Qt::Key_Down, Qt::NoModifier);
     }
     else if(value>-0.1&&value < 0.1)
@@ -1478,7 +1474,8 @@ void MainWindow::on_axisLeftYChanged(double value)
     }
 }
 
-void MainWindow::on_axisRightXChanged(double value)
+
+void MainWindow::on_axisRightXChanged(double value)		// GAME PAD YAW AXIS
 {
     QKeyEvent *event=nullptr;
     if(value>0.8)
@@ -1505,7 +1502,8 @@ void MainWindow::on_axisRightXChanged(double value)
     }
 }
 
-void MainWindow::on_axisRightYChanged(double value)
+
+void MainWindow::on_axisRightYChanged(double value)		// GAME PAD Z AXIS
 {
     QKeyEvent *event=nullptr;
     if(value<-0.8)
@@ -1532,6 +1530,7 @@ void MainWindow::on_axisRightYChanged(double value)
     }
 }
 
+
 void MainWindow::on_gamepadConnected(int deviceId)
 {
     if(!_gamepad)
@@ -1549,6 +1548,7 @@ void MainWindow::on_gamepadConnected(int deviceId)
     connect(_gamepad,&QGamepad::axisRightXChanged,this,&MainWindow::on_axisRightXChanged);
     connect(_gamepad,&QGamepad::axisRightYChanged,this,&MainWindow::on_axisRightYChanged);
 }
+
 
 void MainWindow::on_gamepadDisconnected(int deviceId)
 {
