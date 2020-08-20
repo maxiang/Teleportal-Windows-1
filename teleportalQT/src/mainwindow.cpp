@@ -76,10 +76,10 @@ MainWindow::MainWindow(QWidget *parent)
     bas_init_status=true;
 
     //START MAIN LOOP
-
+    connect(this,SIGNAL(SetQMLText()),this,SLOT(on_setQmlText()));
     setupTimer();
     videoReceiver->start(ui->quickWidget);
-
+    UpdateMapTopLableText("NO CONNECTION TO ROBOT");
     //Load MAPS
     connect(ui->quickWidget_2,SIGNAL(statusChanged(QQuickWidget::Status)),this,SLOT(on_statusChanged(QQuickWidget::Status)));
     ui->quickWidget_2->setSource(QUrl(QStringLiteral("qrc:/assets/maps.qml")));
@@ -113,32 +113,36 @@ void MainWindow::setupToolBars()
     ui->vehicleToolBar->addActions(actionListDisarm);
 
     armCheckBox = new QPushButton(this);
-     armCheckBox->setText("CLICK TO START");
+     armCheckBox->setText("CLICK TO START - ROBOT UNARMED");
      armCheckBox->setCheckable(true);
      armCheckBox->setChecked(false);
-    armCheckBox->setStyleSheet("color: rgb(0, 206, 0);font: 87 12pt \"Arial\";");
+    armCheckBox->setStyleSheet("color: rgb(0, 206, 0);font: 87 12pt \"Arial Black\";");
     armCheckBox->setFocusPolicy(Qt::NoFocus);
     AddToolBarSpacer(ui->vehicleToolBar);
     ui->vehicleToolBar->addWidget(armCheckBox);
     AddToolBarSpacer(ui->vehicleToolBar);
     connect(armCheckBox,SIGNAL(clicked(bool)),
                      this,SLOT(armCheckBox_stateChanged(bool)));
+    UpdateMapTopLableText("NO CONNECTION TO ROBOT");
   //  ui->vehicleToolBar->addSeparator();
     AddToolBarSpacer(ui->tabsToolBar,100);
     QLabel *modeLable = new QLabel(this);
-    modeLable->setText("Mode: ");
+    modeLable->setText("DIVE MODE: ");
+    modeLable->setStyleSheet("font: 87 10pt \"Arial Black\"");
     ui->tabsToolBar->addWidget(modeLable);
     modeComboBox = new QPushButton(this);
-    modeComboBox->setText("Depth hold");
+    modeComboBox->setText("Depth Hold");
+    modeComboBox->setStyleSheet("font: 87 10pt \"Arial Black\"");
     modeComboBox->setFocusPolicy(Qt::NoFocus);
     modeComboBox->show();
     connect (modeComboBox , SIGNAL(clicked()) , this , SLOT(on_modeBt_clicked()) );
     ui->tabsToolBar->addWidget(modeComboBox);
 
-    SonarLabel=new QLabel("Sonar: ");
-    SonarlValue = new QLabel("21.0m(95%)   ");
+    SonarLabel=new QLabel("SONAR: ");
+    SonarlValue = new QLabel("21.0 METERS (95%)   ");
     SonarlValue->setFocusPolicy(Qt::NoFocus);
-
+    SonarLabel->setStyleSheet("font: 87 10pt \"Arial Black\"");
+    SonarlValue->setStyleSheet("font: 87 10pt \"Arial Black\"");
     QLabel *yawLabel = new QLabel("Compass: ", this);
     yawLabel->setFocusPolicy(Qt::NoFocus);
     yawLabelValue = new QLabel("0.00", this);
@@ -164,12 +168,12 @@ void MainWindow::setupToolBars()
     yawLabel->setVisible(false);
     yawLabelValue->setVisible(false);
 
-    QLabel *depthLabel = new QLabel("Depth: ", this);
+    QLabel *depthLabel = new QLabel("DEPTH: ", this);
     depthLabel->setFocusPolicy(Qt::NoFocus);
-    depthLabelValue = new QLabel("0.00(Meters)", this);
+    depthLabelValue = new QLabel("0.00 METERS", this);
     depthLabelValue->setFocusPolicy(Qt::NoFocus);
-
-
+    depthLabelValue->setStyleSheet("font: 87 10pt \"Arial Black\"");
+    depthLabel->setStyleSheet("font: 87 10pt \"Arial Black\"");
 
 
     yawLabelValue->setFixedWidth(50);
@@ -296,7 +300,7 @@ void MainWindow::updateVehicleData()
     double yawLableCompass=round(yaw * 100) / 100.0;
     yawLabelValue->setNum(yawLableCompass);
     depthLabelValue->setNum(round(depth * 100) / 100.0);
-    depthLabelValue->setText(depthLabelValue->text()+"(Meters)");
+    depthLabelValue->setText(depthLabelValue->text()+" METERS");
 //    ui->qCompass->setAlt(yawLableCompass);//2020/06/19
     ui->qCompass->setYaw(yawLableCompass);
     if(ui->quickWidget_2->status()==QQuickWidget::Ready)
@@ -404,6 +408,7 @@ void MainWindow::keyPressEvent(QKeyEvent *event)
          }
 
         qDebug() << "You Pressed Key W";
+        UpdateKeyControlValue();
         pressedKey.W = true;
         manual_control.z = keyControlValue.upward;		//SEND COMMAND TO ROBOT
     }
@@ -416,6 +421,7 @@ void MainWindow::keyPressEvent(QKeyEvent *event)
             return;
          }
         qDebug() << "You Pressed Key S";
+        UpdateKeyControlValue();
         if(!SonarAlarm)
         {
             pressedKey.S = true;
@@ -431,6 +437,7 @@ void MainWindow::keyPressEvent(QKeyEvent *event)
             return;
          }
         qDebug() << "You Pressed Key A";
+        UpdateKeyControlValue();
         pressedKey.A = true;
         if (m_modeIndex == 0)			//CHECK MODE OF ROBOT AND GIVE CORRECT VALUE BASED ON MODE
         {
@@ -454,6 +461,7 @@ void MainWindow::keyPressEvent(QKeyEvent *event)
             return;
          }
         qDebug() << "You Pressed Key D";
+        UpdateKeyControlValue();
         pressedKey.D = true;
         if (m_modeIndex == 0)		//CHECK MODE OF ROBOT AND GIVE CORRECT VALUE BASED ON MODE
         {
@@ -477,6 +485,7 @@ void MainWindow::keyPressEvent(QKeyEvent *event)
             return;
          }
         qDebug() << "You Pressed Key Up";
+        UpdateKeyControlValue();
         if(!SonarAlarm)
         {
             pressedKey.Up = true;
@@ -493,6 +502,7 @@ void MainWindow::keyPressEvent(QKeyEvent *event)
             return;
          }
         qDebug() << "You Pressed Key Down";
+        UpdateKeyControlValue();
         pressedKey.Down = true;
         manual_control.x = keyControlValue.backward;		//SEND COMMAND TO ROBOT
     }
@@ -505,6 +515,7 @@ void MainWindow::keyPressEvent(QKeyEvent *event)
             return;
          }
         qDebug() << "You Pressed Key Left";
+        UpdateKeyControlValue();
         pressedKey.Left = true;
         manual_control.y = keyControlValue.leftward;		//SEND COMMAND TO ROBOT
     }
@@ -517,6 +528,7 @@ void MainWindow::keyPressEvent(QKeyEvent *event)
             return;
          }
         qDebug() << "You Pressed Key Right";
+        UpdateKeyControlValue();
         pressedKey.Right = true;
         manual_control.y = keyControlValue.rightward;		//SEND COMMAND TO ROBOT
     }
@@ -529,6 +541,7 @@ void MainWindow::keyPressEvent(QKeyEvent *event)
             return;
          }
          qDebug() << "You Pressed Key R";
+         UpdateKeyControlValue();
          manual_control.buttons = 1024;		//SEND COMMAND TO ROBOT
      }
      else if (event->key() == Qt::Key_F)
@@ -540,6 +553,7 @@ void MainWindow::keyPressEvent(QKeyEvent *event)
             return;
          }
          qDebug() << "You Pressed Key F";
+         UpdateKeyControlValue();
          manual_control.buttons = 512;		//SEND COMMAND TO ROBOT
      }
    else if (event->key() == Qt::Key_T)
@@ -551,6 +565,7 @@ void MainWindow::keyPressEvent(QKeyEvent *event)
             return;
          }
          qDebug() << "You Pressed Key Plus";
+         UpdateKeyControlValue();
          manual_control.buttons = 16384;		//SEND COMMAND TO ROBOT
      }
      else if (event->key() == Qt::Key_G)
@@ -562,6 +577,7 @@ void MainWindow::keyPressEvent(QKeyEvent *event)
             return;
          }
          qDebug() << "You Pressed Key Minus";
+         UpdateKeyControlValue();
          manual_control.buttons = 8192;		//SEND COMMAND TO ROBOT
      }
 
@@ -570,16 +586,19 @@ void MainWindow::keyPressEvent(QKeyEvent *event)
       else if (event->key() == Qt::Key_1)
      {
          qDebug() << "You Pressed Key 1";
+         UpdateKeyControlValue();
          manual_control.buttons = 2;		//SEND COMMAND TO ROBOT
      }
    else if (event->key() == Qt::Key_2)
      {
          qDebug() << "You Pressed Key 2";
+         UpdateKeyControlValue();
          manual_control.buttons = 8;		//SEND COMMAND TO ROBOT
      }
      else if (event->key() == Qt::Key_3)
      {
          qDebug() << "You Pressed Key 3";
+         UpdateKeyControlValue();
          manual_control.buttons = 4;		//SEND COMMAND TO ROBOT
      }
     else
@@ -606,6 +625,7 @@ void MainWindow::keyReleaseEvent(QKeyEvent *event)
     if (event->key() == Qt::Key_W)
     {
         qDebug() << "You Released Key W";
+        UpdateKeyControlValue(false);
         if (pressedKey.S)
         {
             manual_control.z = keyControlValue.downward;
@@ -619,6 +639,7 @@ void MainWindow::keyReleaseEvent(QKeyEvent *event)
     else if (event->key() == Qt::Key_S)
     {
         qDebug() << "You Released Key S";
+        UpdateKeyControlValue(false);
         if (pressedKey.W)
         {
             manual_control.z = keyControlValue.upward;
@@ -632,6 +653,7 @@ void MainWindow::keyReleaseEvent(QKeyEvent *event)
     else if (event->key() == Qt::Key_A)
     {
         qDebug() << "You Released Key A";
+        UpdateKeyControlValue(false);
         if (pressedKey.D)
         {
             manual_control.r = keyControlValue.turnRight;
@@ -645,6 +667,7 @@ void MainWindow::keyReleaseEvent(QKeyEvent *event)
     else if (event->key() == Qt::Key_D)
     {
         qDebug() << "You Released Key D";
+        UpdateKeyControlValue(false);
         if (pressedKey.A)
         {
             manual_control.r = keyControlValue.turnLeft;
@@ -658,6 +681,7 @@ void MainWindow::keyReleaseEvent(QKeyEvent *event)
     else if (event->key() == Qt::Key_Up)
     {
         qDebug() << "You Released Key Up";
+        UpdateKeyControlValue(false);
         if (pressedKey.Down)
         {
             manual_control.x = keyControlValue.backward;
@@ -671,6 +695,7 @@ void MainWindow::keyReleaseEvent(QKeyEvent *event)
     else if (event->key() == Qt::Key_Down)
     {
         qDebug() << "You Released Key Down";
+        UpdateKeyControlValue(false);
         if (pressedKey.Up)
         {
             manual_control.x = keyControlValue.forward;
@@ -684,6 +709,7 @@ void MainWindow::keyReleaseEvent(QKeyEvent *event)
     else if (event->key() == Qt::Key_Left)
     {
         qDebug() << "You Released Key Left";
+        UpdateKeyControlValue(false);
         if (pressedKey.Right)
         {
             manual_control.y = keyControlValue.rightward;
@@ -697,6 +723,7 @@ void MainWindow::keyReleaseEvent(QKeyEvent *event)
     else if (event->key() == Qt::Key_Right)
     {
         qDebug() << "You Released Key Right";
+        UpdateKeyControlValue(false);
         if (pressedKey.Left)
         {
             manual_control.y = keyControlValue.leftward;
@@ -711,24 +738,28 @@ void MainWindow::keyReleaseEvent(QKeyEvent *event)
  else if (event->key() == Qt::Key_R)
     {
         qDebug() << "You Released Key R";
+        UpdateKeyControlValue(false);
         manual_control.buttons = 0;
 
     }
  else if (event->key() == Qt::Key_F)
     {
         qDebug() << "You Released Key F";
+        UpdateKeyControlValue(false);
         manual_control.buttons = 0;
 
     }
  else if (event->key() == Qt::Key_T)
     {
         qDebug() << "You Released Key T";
+        UpdateKeyControlValue(false);
         manual_control.buttons = 0;
 
     }
  else if (event->key() == Qt::Key_G)
     {
         qDebug() << "You Released Key G";
+        UpdateKeyControlValue(false);
         manual_control.buttons = 0;
 
     }
@@ -811,16 +842,18 @@ void MainWindow::armCheckBox_stateChanged(bool checked)
     {
         qDebug() << "vehicle: " << currentVehicle << "is not ready!";
         armCheckBox->setChecked(false);
-        armCheckBox->setStyleSheet("color: rgb(0, 206, 0);font: 87 12pt \"Arial\";");
-        armCheckBox->setText("CLICK TO START");
+        armCheckBox->setStyleSheet("color: rgb(0, 206, 0);font: 87 12pt \"Arial Black\";");
+        armCheckBox->setText("CLICK TO START - ROBOT UNARMED");
+        UpdateMapTopLableText("NO CONNECTION TO ROBOT");
         return;
     }
 
     if (armCheckBox->isChecked())
     {
         AS::as_api_vehicle_arm(currentVehicle, 1);
-        armCheckBox->setStyleSheet("color: rgb(255, 0, 0);font: 87 12pt \"Arial\";");
-        armCheckBox->setText("ARMED");
+        armCheckBox->setStyleSheet("color: rgb(255, 0, 0);font: 87 12pt \"Arial Black\";");
+        armCheckBox->setText("ROBOT ARMED");
+        UpdateMapTopLableText("");
         qDebug() << "ARM";
     }
     else
@@ -832,8 +865,9 @@ void MainWindow::armCheckBox_stateChanged(bool checked)
         manual_control.buttons = 0;
 
         AS::as_api_vehicle_disarm(currentVehicle, 1);
-        armCheckBox->setStyleSheet("color: rgb(0, 206, 0);font: 87 12pt \"Arial\";");
-        armCheckBox->setText("CLICK TO START");
+        armCheckBox->setStyleSheet("color: rgb(0, 206, 0);font: 87 12pt \"Arial Black\";");
+        armCheckBox->setText("CLICK TO START - ROBOT UNARMED");
+        UpdateMapTopLableText("");
         qDebug() << "DISARM";
     }
 }
@@ -855,13 +889,14 @@ void MainWindow::on_updateConfidence()
     //SonarlValue
     float fDistance=pingLink->getDistance()/1000.0;
     float fConfidence=pingLink->getConfidence();
-    QString strValue=QString("%1m(%2\%)   ").arg(fDistance).arg(fConfidence);
+    QString strValue=QString("%1 METERS (%2\%)   ").arg(fDistance).arg(fConfidence);
     SonarlValue->setText(strValue);
     if(fConfidence<ConfidenceSetting)
         return;
     QString strLabelName="Sonar: ";//normal
     QString strNormalsty="color: rgb(0, 0, 0);";
     QTime tcurrent=QTime::currentTime();
+    QString mapTopLableText="";
     if(fDistance>WarnDistance)
     {
         SonarAlarm=false;
@@ -886,27 +921,33 @@ void MainWindow::on_updateConfidence()
         manual_control.z = 500;
         manual_control.r = 0;
         manual_control.buttons = 0;
-
+        mapTopLableText="PROXIMITY ALARM";
         if(PrevTime.msecsTo(tcurrent)/1000>AlarmSetting)
         {
             armCheckBox->setChecked(false);
             armCheckBox_stateChanged(true);
             PrevTime=tcurrent;
+            mapTopLableText="OBSTACLE AVOIDANCE ENGAGED - DISARMING ROBOT";
         }
+
     }
+    strNormalsty+="font: 87 10pt \"Arial Black\"";
     SonarLabel->setText(strLabelName);
     SonarLabel->setStyleSheet(strNormalsty);
     SonarlValue->setStyleSheet(strNormalsty);
+    UpdateMapTopLableText(mapTopLableText);
 }
 
 void MainWindow::on_statusChanged(QQuickWidget::Status status)
 {
     if(status==QQuickWidget::Ready)
     {
+
         qmlTimer=ui->quickWidget_2->rootObject()->findChild<QObject*>("qmlTimer");
         //use ini file Coordinates
         UpdateMapCenterCoordinates(fMapCoordinates);
         UpdateMarkerCoordinates(fMarkerCoordinates);
+
 
     }
 }
@@ -957,16 +998,23 @@ void MainWindow::RestartNetWork()
 {
     rollLPitchCheckTimer.stop();
 
-   // AS::as_api_deinit();
+    vehicleDataUpdateTimer.stop();
+    manualControlTimer.stop();
+    currentVehicle=1;
+    firstRun = false;
+    armCheckBox->setChecked(false);
+    armCheckBox_stateChanged(Qt::Unchecked);
+    AS::as_api_deinit();
+    std::string ip("192.168.2.");
 
-    //29062020 Adam: This doesn't work
-
-    //std::string ip("192.168.2.");
-    //AS::as_api_init(ip.c_str(), F_THREAD_ALL);
+    AS::as_api_init(ip.c_str(), F_THREAD_ALL);
 
     //rest connect
-    //pingLink->connectLink();
+    pingLink->connectLink();
     rollLPitchCheckTimer.start();
+    vehicleDataUpdateTimer.start();
+    manualControlTimer.start();
+
 }
 
 void MainWindow::LoadInIConfig()
@@ -980,22 +1028,84 @@ void MainWindow::LoadInIConfig()
         sets.setValue("GPS/MarkerCoordinates",QStringList{"-14.0094983494893","80.1233232234234"});
         sets.setValue("GPS/ardusubCoordinates",false);
 
-        sets.setValue("KEYBOARD/forward",700);
-        sets.setValue("KEYBOARD/backward",-700);
-        sets.setValue("KEYBOARD/leftward",-700);
-        sets.setValue("KEYBOARD/rightward",700);
-        sets.setValue("KEYBOARD/upward",900);
-        sets.setValue("KEYBOARD/downward",100);
-        sets.setValue("KEYBOARD/turnLeft",-700);
-        sets.setValue("KEYBOARD/turnRight",700);
-        sets.setValue("KEYBOARD/turnLeftM",-300);
-        sets.setValue("KEYBOARD/turnRightM",300);
+        //press
+        sets.setValue("KEYBOARD_KEYPRESS/forward",500);
+        sets.setValue("KEYBOARD_KEYPRESS/backward",-500);
+        sets.setValue("KEYBOARD_KEYPRESS/leftward",-500);
+        sets.setValue("KEYBOARD_KEYPRESS/rightward",500);
+        sets.setValue("KEYBOARD_KEYPRESS/upward",700);
+        sets.setValue("KEYBOARD_KEYPRESS/downward",300);
+        sets.setValue("KEYBOARD_KEYPRESS/turnLeft",-500);
+        sets.setValue("KEYBOARD_KEYPRESS/turnRight",500);
+        sets.setValue("KEYBOARD_KEYPRESS/turnLeftM",-500);
+        sets.setValue("KEYBOARD_KEYPRESS/turnRightM",500);
 
-        sets.setValue("SONAR/WarnDistance",1);
-        sets.setValue("SONAR/MinDistance",0.5);
-        sets.setValue("SONAR/AlarmSetting",5);
+        //hold
+        sets.setValue("KEYBOARD_KEYHOLD/forward",999);
+        sets.setValue("KEYBOARD_KEYHOLD/backward",-999);
+        sets.setValue("KEYBOARD_KEYHOLD/leftward",-999);
+        sets.setValue("KEYBOARD_KEYHOLD/rightward",999);
+        sets.setValue("KEYBOARD_KEYHOLD/upward",900);
+        sets.setValue("KEYBOARD_KEYHOLD/downward",100);
+        sets.setValue("KEYBOARD_KEYHOLD/turnLeft",-999);
+        sets.setValue("KEYBOARD_KEYHOLD/turnRight",999);
+        sets.setValue("KEYBOARD_KEYHOLD/turnLeftM",-300);
+        sets.setValue("KEYBOARD_KEYHOLD/turnRightM",300);
+
+        // hold SONAR WARNING
+        sets.setValue("KEYBOARD_KEYHOLD_SONAR_WARNING/forward",500);
+        sets.setValue("KEYBOARD_KEYHOLD_SONAR_WARNING/backward",-999);
+        sets.setValue("KEYBOARD_KEYHOLD_SONAR_WARNING/leftward",-999);
+        sets.setValue("KEYBOARD_KEYHOLD_SONAR_WARNING/rightward",999);
+        sets.setValue("KEYBOARD_KEYHOLD_SONAR_WARNING/upward",900);
+        sets.setValue("KEYBOARD_KEYHOLD_SONAR_WARNING/downward",300);
+        sets.setValue("KEYBOARD_KEYHOLD_SONAR_WARNING/turnLeft",-999);
+        sets.setValue("KEYBOARD_KEYHOLD_SONAR_WARNING/turnRight",999);
+        sets.setValue("KEYBOARD_KEYHOLD_SONAR_WARNING/turnLeftM",-300);
+        sets.setValue("KEYBOARD_KEYHOLD_SONAR_WARNING/turnRightM",300);
+
+        //PRESS SONAR WARNING
+        sets.setValue("KEYBOARD_KEYPRESS_SONAR_WARNING/forward",500);
+        sets.setValue("KEYBOARD_KEYPRESS_SONAR_WARNING/backward",-500);
+        sets.setValue("KEYBOARD_KEYPRESS_SONAR_WARNING/leftward",-500);
+        sets.setValue("KEYBOARD_KEYPRESS_SONAR_WARNING/rightward",500);
+        sets.setValue("KEYBOARD_KEYPRESS_SONAR_WARNING/upward",700);
+        sets.setValue("KEYBOARD_KEYPRESS_SONAR_WARNING/downward",300);
+        sets.setValue("KEYBOARD_KEYPRESS_SONAR_WARNING/turnLeft",-500);
+        sets.setValue("KEYBOARD_KEYPRESS_SONAR_WARNING/turnRight",500);
+        sets.setValue("KEYBOARD_KEYPRESS_SONAR_WARNING/turnLeftM",-500);
+        sets.setValue("KEYBOARD_KEYPRESS_SONAR_WARNING/turnRightM",500);
+
+        //KEYBOARD - KEYHOLD - SONAR ALARM
+        sets.setValue("KEYBOARD_KEYHOLD_SONAR_ALARM/forward",0);
+        sets.setValue("KEYBOARD_KEYHOLD_SONAR_ALARM/backward",-999);
+        sets.setValue("KEYBOARD_KEYHOLD_SONAR_ALARM/leftward",-999);
+        sets.setValue("KEYBOARD_KEYHOLD_SONAR_ALARM/rightward",999);
+        sets.setValue("KEYBOARD_KEYHOLD_SONAR_ALARM/upward",900);
+        sets.setValue("KEYBOARD_KEYHOLD_SONAR_ALARM/downward",500);
+        sets.setValue("KEYBOARD_KEYHOLD_SONAR_ALARM/turnLeft",-999);
+        sets.setValue("KEYBOARD_KEYHOLD_SONAR_ALARM/turnRight",999);
+        sets.setValue("KEYBOARD_KEYHOLD_SONAR_ALARM/turnLeftM",-300);
+        sets.setValue("KEYBOARD_KEYHOLD_SONAR_ALARM/turnRightM",300);
+
+        //KEYBOARD - KEYPRESS - SONAR ALARM
+        sets.setValue("KEYBOARD_KEYPRESS_SONAR_ALARM/forward",0);
+        sets.setValue("KEYBOARD_KEYPRESS_SONAR_ALARM/backward",-500);
+        sets.setValue("KEYBOARD_KEYPRESS_SONAR_ALARM/leftward",-500);
+        sets.setValue("KEYBOARD_KEYPRESS_SONAR_ALARM/rightward",500);
+        sets.setValue("KEYBOARD_KEYPRESS_SONAR_ALARM/upward",700);
+        sets.setValue("KEYBOARD_KEYPRESS_SONAR_ALARM/downward",500);
+        sets.setValue("KEYBOARD_KEYPRESS_SONAR_ALARM/turnLeft",-500);
+        sets.setValue("KEYBOARD_KEYPRESS_SONAR_ALARM/turnRight",500);
+        sets.setValue("KEYBOARD_KEYPRESS_SONAR_ALARM/turnLeftM",-500);
+        sets.setValue("KEYBOARD_KEYPRESS_SONAR_ALARM/turnRightM",500);
+
+
+        sets.setValue("SONAR/WarnDistance",1.5);
+        sets.setValue("SONAR/MinDistance",0.75);
+        sets.setValue("SONAR/AlarmSetting",3);
         sets.setValue("SONAR/ConfidenceSetting",90);
-
+        sets.setValue("SONAR/PingInterval",250);
         //gamepad
 
         sets.setValue("GAMEPAD/buttonL1","Qt::Key_F");
@@ -1017,22 +1127,78 @@ void MainWindow::LoadInIConfig()
     bardusubCoordinates=sets.value("GPS/ardusubCoordinates").toBool();
 
     //keyControlValue
-    keyControlValue.forward=sets.value("KEYBOARD/forward").toInt();
-    keyControlValue.backward=sets.value("KEYBOARD/backward").toInt();
-    keyControlValue.leftward=sets.value("KEYBOARD/leftward").toInt();
-    keyControlValue.rightward=sets.value("KEYBOARD/rightward").toInt();
-    keyControlValue.upward=sets.value("KEYBOARD/upward").toInt();
-    keyControlValue.downward=sets.value("KEYBOARD/downward").toInt();
-    keyControlValue.turnLeft=sets.value("KEYBOARD/turnLeft").toInt();
-    keyControlValue.turnRight=sets.value("KEYBOARD/turnRight").toInt();
-    keyControlValue.turnLeftM=sets.value("KEYBOARD/turnLeftM").toInt();
-    keyControlValue.turnRightM=sets.value("KEYBOARD/turnRightM").toInt();
+    keyControlValue_Press.forward=sets.value("KEYBOARD_KEYPRESS/forward").toInt();
+    keyControlValue_Press.backward=sets.value("KEYBOARD_KEYPRESS/backward").toInt();
+    keyControlValue_Press.leftward=sets.value("KEYBOARD_KEYPRESS/leftward").toInt();
+    keyControlValue_Press.rightward=sets.value("KEYBOARD_KEYPRESS/rightward").toInt();
+    keyControlValue_Press.upward=sets.value("KEYBOARD_KEYPRESS/upward").toInt();
+    keyControlValue_Press.downward=sets.value("KEYBOARD_KEYPRESS/downward").toInt();
+    keyControlValue_Press.turnLeft=sets.value("KEYBOARD_KEYPRESS/turnLeft").toInt();
+    keyControlValue_Press.turnRight=sets.value("KEYBOARD_KEYPRESS/turnRight").toInt();
+    keyControlValue_Press.turnLeftM=sets.value("KEYBOARD_KEYPRESS/turnLeftM").toInt();
+    keyControlValue_Press.turnRightM=sets.value("KEYBOARD_KEYPRESS/turnRightM").toInt();
+
+    keyControlValue_Hold.forward=sets.value("KEYBOARD_KEYHOLD/forward").toInt();
+    keyControlValue_Hold.backward=sets.value("KEYBOARD_KEYHOLD/backward").toInt();
+    keyControlValue_Hold.leftward=sets.value("KEYBOARD_KEYHOLD/leftward").toInt();
+    keyControlValue_Hold.rightward=sets.value("KEYBOARD_KEYHOLD/rightward").toInt();
+    keyControlValue_Hold.upward=sets.value("KEYBOARD_KEYHOLD/upward").toInt();
+    keyControlValue_Hold.downward=sets.value("KEYBOARD_KEYHOLD/downward").toInt();
+    keyControlValue_Hold.turnLeft=sets.value("KEYBOARD_KEYHOLD/turnLeft").toInt();
+    keyControlValue_Hold.turnRight=sets.value("KEYBOARD_KEYHOLD/turnRight").toInt();
+    keyControlValue_Hold.turnLeftM=sets.value("KEYBOARD_KEYHOLD/turnLeftM").toInt();
+    keyControlValue_Hold.turnRightM=sets.value("KEYBOARD_KEYHOLD/turnRightM").toInt();
+
+    keyControlValue_Warning.forward=sets.value("KEYBOARD_KEYPRESS_SONAR_WARNING/forward").toInt();
+    keyControlValue_Warning.backward=sets.value("KEYBOARD_KEYPRESS_SONAR_WARNING/backward").toInt();
+    keyControlValue_Warning.leftward=sets.value("KEYBOARD_KEYPRESS_SONAR_WARNING/leftward").toInt();
+    keyControlValue_Warning.rightward=sets.value("KEYBOARD_KEYPRESS_SONAR_WARNING/rightward").toInt();
+    keyControlValue_Warning.upward=sets.value("KEYBOARD_KEYPRESS_SONAR_WARNING/upward").toInt();
+    keyControlValue_Warning.downward=sets.value("KEYBOARD_KEYPRESS_SONAR_WARNING/downward").toInt();
+    keyControlValue_Warning.turnLeft=sets.value("KEYBOARD_KEYPRESS_SONAR_WARNING/turnLeft").toInt();
+    keyControlValue_Warning.turnRight=sets.value("KEYBOARD_KEYPRESS_SONAR_WARNING/turnRight").toInt();
+    keyControlValue_Warning.turnLeftM=sets.value("KEYBOARD_KEYPRESS_SONAR_WARNING/turnLeftM").toInt();
+    keyControlValue_Warning.turnRightM=sets.value("KEYBOARD_KEYPRESS_SONAR_WARNING/turnRightM").toInt();
+
+    keyControlValue_HoldWarning.forward=sets.value("KEYBOARD_KEYHOLD_SONAR_WARNING/forward").toInt();
+    keyControlValue_HoldWarning.backward=sets.value("KEYBOARD_KEYHOLD_SONAR_WARNING/backward").toInt();
+    keyControlValue_HoldWarning.leftward=sets.value("KEYBOARD_KEYHOLD_SONAR_WARNING/leftward").toInt();
+    keyControlValue_HoldWarning.rightward=sets.value("KEYBOARD_KEYHOLD_SONAR_WARNING/rightward").toInt();
+    keyControlValue_HoldWarning.upward=sets.value("KEYBOARD_KEYHOLD_SONAR_WARNING/upward").toInt();
+    keyControlValue_HoldWarning.downward=sets.value("KEYBOARD_KEYHOLD_SONAR_WARNING/downward").toInt();
+    keyControlValue_HoldWarning.turnLeft=sets.value("KEYBOARD_KEYHOLD_SONAR_WARNING/turnLeft").toInt();
+    keyControlValue_HoldWarning.turnRight=sets.value("KEYBOARD_KEYHOLD_SONAR_WARNING/turnRight").toInt();
+    keyControlValue_HoldWarning.turnLeftM=sets.value("KEYBOARD_KEYHOLD_SONAR_WARNING/turnLeftM").toInt();
+    keyControlValue_HoldWarning.turnRightM=sets.value("KEYBOARD_KEYHOLD_SONAR_WARNING/turnRightM").toInt();
+
+    keyControlValue_HoldAlarm.forward=sets.value("KEYBOARD_KEYHOLD_SONAR_ALARM/forward").toInt();
+    keyControlValue_HoldAlarm.backward=sets.value("KEYBOARD_KEYHOLD_SONAR_ALARM/backward").toInt();
+    keyControlValue_HoldAlarm.leftward=sets.value("KEYBOARD_KEYHOLD_SONAR_ALARM/leftward").toInt();
+    keyControlValue_HoldAlarm.rightward=sets.value("KEYBOARD_KEYHOLD_SONAR_ALARM/rightward").toInt();
+    keyControlValue_HoldAlarm.upward=sets.value("KEYBOARD_KEYHOLD_SONAR_ALARM/upward").toInt();
+    keyControlValue_HoldAlarm.downward=sets.value("KEYBOARD_KEYHOLD_SONAR_ALARM/downward").toInt();
+    keyControlValue_HoldAlarm.turnLeft=sets.value("KEYBOARD_KEYHOLD_SONAR_ALARM/turnLeft").toInt();
+    keyControlValue_HoldAlarm.turnRight=sets.value("KEYBOARD_KEYHOLD_SONAR_ALARM/turnRight").toInt();
+    keyControlValue_HoldAlarm.turnLeftM=sets.value("KEYBOARD_KEYHOLD_SONAR_ALARM/turnLeftM").toInt();
+    keyControlValue_HoldAlarm.turnRightM=sets.value("KEYBOARD_KEYHOLD_SONAR_ALARM/turnRightM").toInt();
+
+    keyControlValue_Alarm.forward=sets.value("KEYBOARD_KEYPRESS_SONAR_ALARM/forward").toInt();
+    keyControlValue_Alarm.backward=sets.value("KEYBOARD_KEYPRESS_SONAR_ALARM/backward").toInt();
+    keyControlValue_Alarm.leftward=sets.value("KEYBOARD_KEYPRESS_SONAR_ALARM/leftward").toInt();
+    keyControlValue_Alarm.rightward=sets.value("KEYBOARD_KEYPRESS_SONAR_ALARM/rightward").toInt();
+    keyControlValue_Alarm.upward=sets.value("KEYBOARD_KEYPRESS_SONAR_ALARM/upward").toInt();
+    keyControlValue_Alarm.downward=sets.value("KEYBOARD_KEYPRESS_SONAR_ALARM/downward").toInt();
+    keyControlValue_Alarm.turnLeft=sets.value("KEYBOARD_KEYPRESS_SONAR_ALARM/turnLeft").toInt();
+    keyControlValue_Alarm.turnRight=sets.value("KEYBOARD_KEYPRESS_SONAR_ALARM/turnRight").toInt();
+    keyControlValue_Alarm.turnLeftM=sets.value("KEYBOARD_KEYPRESS_SONAR_ALARM/turnLeftM").toInt();
+    keyControlValue_Alarm.turnRightM=sets.value("KEYBOARD_KEYPRESS_SONAR_ALARM/turnRightM").toInt();
+
 
     WarnDistance=sets.value("SONAR/WarnDistance").toFloat();
     MinDistance=sets.value("SONAR/MinDistance").toFloat();
     AlarmSetting=sets.value("SONAR/AlarmSetting").toInt();
     ConfidenceSetting=sets.value("SONAR/ConfidenceSetting").toInt();
-
+    PingSensor::_firmwareDefaultPingInterval=sets.value("SONAR/PingInterval").toInt();
     iIdleSetting=sets.value("MISC/IdleSetting").toUInt();
 
 
@@ -1190,6 +1356,73 @@ void MainWindow::LoadMapingKey()
          _gameKeyNavigation->setButtonGuideKey(Qt::Key_unknown);
     }
 }
+
+void MainWindow::UpdateKeyControlValue(bool bPress)
+{
+    keyControlValue_t keyControlValue_Up;
+    keyControlValue_t keyControlValue_Down;
+    QString strLable=SonarLabel->text();
+    if(strLable.contains("DANGER",Qt::CaseInsensitive))
+    {
+        keyControlValue_Up=keyControlValue_Alarm;
+        keyControlValue_Down=keyControlValue_HoldAlarm;
+    }
+    else if(strLable.contains("WARNING",Qt::CaseInsensitive))
+    {
+        keyControlValue_Up=keyControlValue_Warning;
+        keyControlValue_Down=keyControlValue_HoldWarning;
+    }
+    else
+    {
+        keyControlValue_Up=keyControlValue_Press;
+        keyControlValue_Down=keyControlValue_Hold;
+    }
+    if(bPress)
+    {
+        keyControlValue=keyControlValue_Down;
+    }
+    else
+    {
+        keyControlValue=keyControlValue_Up;
+    }
+}
+
+void MainWindow::on_setQmlText()
+{
+    QObject* markerItem=ui->quickWidget->rootObject()->findChild<QObject*>("videoLabel");
+    if(markerItem)
+    {
+        QString qmlText=markerItem->property("text").value<QString>();
+        if(mapTextCache!=qmlText)
+        {
+            qmlText=mapTextCache;
+            markerItem->setProperty("text",QVariant::fromValue(qmlText));
+        }
+        mapTextCache="";
+    }
+}
+
+void MainWindow::UpdateMapTopLableText(QString strTip)
+{
+
+    mapTextCache=strTip;
+    if(bmapState)
+        return;
+    emit SetQMLText();
+    if(strTip=="OBSTACLE AVOIDANCE ENGAGED - DISARMING ROBOT")
+    {
+        bmapState=true;
+        QTimer::singleShot(5000,this, [&](){
+            bmapState=false;
+            emit SetQMLText();
+        });
+    }
+
+
+
+
+}
+
 void MainWindow::on_axisLeftXChanged(double value)
 {
     //value rang -1.0 1.0
