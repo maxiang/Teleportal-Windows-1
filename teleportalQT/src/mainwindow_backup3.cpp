@@ -26,14 +26,14 @@ MainWindow::MainWindow(QWidget *parent)		//START APPLICATION
     ,_gameKeyNavigation(nullptr)
 {
    
-	// SETUP APPLICATION
+	//SETUP APPLICATION
     ui->setupUi(this);
     setWindowIcon(QIcon(":/assets/icons/main.svg"));
     QCoreApplication::setOrganizationName("Teleportal");
     QCoreApplication::setOrganizationDomain("");
     QCoreApplication::setApplicationName("Teleportal");
 
-    // SETUP STARTING VALUES FOR KEYBOARD INPUT
+    //SETUP STARTING VALUES FOR KEYBOARD INPUT
     manual_control.x = 0;
     manual_control.y = 0;
     manual_control.z = 500;
@@ -60,36 +60,36 @@ MainWindow::MainWindow(QWidget *parent)		//START APPLICATION
     keyControlValue.turnLeftM = -300;
     keyControlValue.turnRightM = 300;
 
-    // SETUP MISC VARIABLES
+    //SETUP MISC VARIABLES
     m_modeIndex = 1;
     IdleTime = 1;
     firstRun = false;
 
-    // SETUP VIDEO AND TOOLBAR
+    //SETUP VIDEO AND TOOLBAR
     on_actionVideo_triggered();
     setupToolBars();
 
 
-    // SETUP FOCUS POLICY
+    //SETUP FOCUS POLICY
     setFocusPolicy(Qt::StrongFocus);
     setFocus();
 
-    // LOAD CONFIG FILE AND INITIALISE GAMEPAD
+    //LOAD CONFIG FILE AND INITIALISE GAMEPAD
     LoadInIConfig();
     InitGamePad();
 
-    // INITILIZE & CONNECT TO ROBOT
+    //INITILIZE & CONNECT TO ROBOT
     std::string ip("192.168.2.");
     AS::as_api_init(ip.c_str(), F_THREAD_ALL);
     bas_init_status=true;
 
-    // SETUP MAIN LOOP
+    //SETUP MAIN LOOP
     connect(this,SIGNAL(SetQMLText()),this,SLOT(on_setQmlText()));
     setupTimer();
     videoReceiver->start(ui->quickWidget);
     UpdateMapTopLableText("NO CONNECTION TO ROBOT");
 
-    // LOAD MAPS
+    //LOAD MAPS
     connect(ui->quickWidget_2,SIGNAL(statusChanged(QQuickWidget::Status)),this,SLOT(on_statusChanged(QQuickWidget::Status)));
     ui->quickWidget_2->setSource(QUrl(QStringLiteral("qrc:/assets/maps.qml")));
     pingLink=new PingSensor(this);
@@ -144,7 +144,7 @@ void MainWindow::setupToolBars()
     connect (modeComboBox , SIGNAL(clicked()) , this , SLOT(on_modeBt_clicked()) );
     ui->tabsToolBar->addWidget(modeComboBox);
 
-    // SONAR DISPLAY
+    //SONAR DISPLAY
     SonarLabel=new QLabel("SONAR: ");
     SonarlValue = new QLabel("21.0 METERS (95%)   ");
     SonarlValue->setFocusPolicy(Qt::NoFocus);
@@ -224,15 +224,15 @@ void MainWindow::on_modeBt_clicked(){
     QKeyEvent* event=nullptr;
     if(modeComboBox->text()=="Depth Hold")
     {
-        event=new QKeyEvent(QEvent::KeyPress,Qt::Key_3, Qt::NoModifier);
+        event=new QKeyEvent(QEvent::KeyPress,Qt::Key_B, Qt::NoModifier);
     }
     else if(modeComboBox->text()=="Stability")
     {
-        event=new QKeyEvent(QEvent::KeyPress,Qt::Key_2, Qt::NoModifier);
+        event=new QKeyEvent(QEvent::KeyPress,Qt::Key_M, Qt::NoModifier);
     }
     else if(modeComboBox->text()=="Manual")
     {
-        event=new QKeyEvent(QEvent::KeyPress,Qt::Key_1, Qt::NoModifier);
+        event=new QKeyEvent(QEvent::KeyPress,Qt::Key_H, Qt::NoModifier);
     }
     if(event)
     {

@@ -5,17 +5,6 @@
 #include <QGamepadManager>
 #include <QMediaPlayer>
 
-
-// THIS APP USES ARDUSUB_API TO COMMUNICATE WITH ROBOT 192.168.2.2:14???
-// THIS APP USES GSTREAMER TO PLAY LIVE VIDEO STREAM ON PORT 5600
-// THIS APP USES PING TO RECEIVE SONAR DATA
-// THIS APP USES QMediaPlayer TO PLAY .MP3 FILES FOR VOICE
-// THIS APP HAS GAMEPAD SUPPORT BUT IS NOT CURRENTLY BEING USED
-// THIS APP HAS BASIC COLLISON AI
-// THIS APP HAS A CONFIGURATION FILE teleportal.ini
-
-
-
 MainWindow::MainWindow(QWidget *parent)		//START APPLICATION
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
@@ -26,14 +15,14 @@ MainWindow::MainWindow(QWidget *parent)		//START APPLICATION
     ,_gameKeyNavigation(nullptr)
 {
    
-	// SETUP APPLICATION
+	//SETUP APPLICATION
     ui->setupUi(this);
     setWindowIcon(QIcon(":/assets/icons/main.svg"));
     QCoreApplication::setOrganizationName("Teleportal");
     QCoreApplication::setOrganizationDomain("");
     QCoreApplication::setApplicationName("Teleportal");
 
-    // SETUP STARTING VALUES FOR KEYBOARD INPUT
+    //SETUP STARTING VALUES FOR KEYBOARD INPUT
     manual_control.x = 0;
     manual_control.y = 0;
     manual_control.z = 500;
@@ -60,36 +49,36 @@ MainWindow::MainWindow(QWidget *parent)		//START APPLICATION
     keyControlValue.turnLeftM = -300;
     keyControlValue.turnRightM = 300;
 
-    // SETUP MISC VARIABLES
+    //SETUP MISC VARIABLES
     m_modeIndex = 1;
     IdleTime = 1;
     firstRun = false;
 
-    // SETUP VIDEO AND TOOLBAR
+    //SETUP VIDEO AND TOOLBAR
     on_actionVideo_triggered();
     setupToolBars();
 
 
-    // SETUP FOCUS POLICY
+    //SETUP FOCUS POLICY
     setFocusPolicy(Qt::StrongFocus);
     setFocus();
 
-    // LOAD CONFIG FILE AND INITIALISE GAMEPAD
+    //LOAD CONFIG FILE AND INITIALISE GAMEPAD
     LoadInIConfig();
     InitGamePad();
 
-    // INITILIZE & CONNECT TO ROBOT
+    //INITILIZE & CONNECT TO ROBOT
     std::string ip("192.168.2.");
     AS::as_api_init(ip.c_str(), F_THREAD_ALL);
     bas_init_status=true;
 
-    // SETUP MAIN LOOP
+    //SETUP MAIN LOOP
     connect(this,SIGNAL(SetQMLText()),this,SLOT(on_setQmlText()));
     setupTimer();
     videoReceiver->start(ui->quickWidget);
     UpdateMapTopLableText("NO CONNECTION TO ROBOT");
 
-    // LOAD MAPS
+    //LOAD MAPS
     connect(ui->quickWidget_2,SIGNAL(statusChanged(QQuickWidget::Status)),this,SLOT(on_statusChanged(QQuickWidget::Status)));
     ui->quickWidget_2->setSource(QUrl(QStringLiteral("qrc:/assets/maps.qml")));
     pingLink=new PingSensor(this);
@@ -102,7 +91,6 @@ MainWindow::MainWindow(QWidget *parent)		//START APPLICATION
     rollLPitchCheckTimer.start();
 }
 
-
 MainWindow::~MainWindow()
 {
     //ON SHUTDOWN DISARM ROBOT
@@ -110,7 +98,6 @@ MainWindow::~MainWindow()
     armCheckBox_stateChanged(Qt::Unchecked);
     delete ui;
 }
-
 
 void MainWindow::setupToolBars()
 {
@@ -144,7 +131,7 @@ void MainWindow::setupToolBars()
     connect (modeComboBox , SIGNAL(clicked()) , this , SLOT(on_modeBt_clicked()) );
     ui->tabsToolBar->addWidget(modeComboBox);
 
-    // SONAR DISPLAY
+    //SONAR DISPLAY
     SonarLabel=new QLabel("SONAR: ");
     SonarlValue = new QLabel("21.0 METERS (95%)   ");
     SonarlValue->setFocusPolicy(Qt::NoFocus);
@@ -217,29 +204,27 @@ void MainWindow::setupToolBars()
     ResizeToolBar();
 }
 
-
 void MainWindow::on_modeBt_clicked(){
 
    	//WHEN USER CLICKS ON DIVE MODE BUTTON - CHANGE MODE
     QKeyEvent* event=nullptr;
     if(modeComboBox->text()=="Depth Hold")
     {
-        event=new QKeyEvent(QEvent::KeyPress,Qt::Key_3, Qt::NoModifier);
+        event=new QKeyEvent(QEvent::KeyPress,Qt::Key_B, Qt::NoModifier);
     }
     else if(modeComboBox->text()=="Stability")
     {
-        event=new QKeyEvent(QEvent::KeyPress,Qt::Key_2, Qt::NoModifier);
+        event=new QKeyEvent(QEvent::KeyPress,Qt::Key_M, Qt::NoModifier);
     }
     else if(modeComboBox->text()=="Manual")
     {
-        event=new QKeyEvent(QEvent::KeyPress,Qt::Key_1, Qt::NoModifier);
+        event=new QKeyEvent(QEvent::KeyPress,Qt::Key_H, Qt::NoModifier);
     }
     if(event)
     {
         QGuiApplication::sendEvent(this, event);
     }
 }
-
 
 void MainWindow::setupTimer()
 {
@@ -252,7 +237,6 @@ void MainWindow::setupTimer()
     manualControlTimer.setInterval(50);
     manualControlTimer.start();
 }
-
 
 void MainWindow::updateVehicleData()
 {
@@ -338,7 +322,6 @@ void MainWindow::updateVehicleData()
     UpdateModeLable();
 }
 
-
 void MainWindow::manualControl()
 {
     //MAIN ROBOT CONTROL LOOP - ACTIVATE ONLY WHEN ROBOT IS CONNECTED AND ARMED
@@ -350,7 +333,6 @@ void MainWindow::manualControl()
                                   manual_control.buttons, currentVehicle);
     }
 }
-
 
 void MainWindow::resizeWindowsManual()
 {
@@ -364,14 +346,12 @@ void MainWindow::resizeWindowsManual()
     ResizeToolBar();
 }
 
-
 void MainWindow::ResizeToolBar()
 {
     ui->tabsToolBar->setFixedWidth( ui->centralwidget->width()/3);
     ui->vehicleToolBar->setFixedWidth( ui->centralwidget->width()/3);
     ui->statusToolBar->setFixedWidth( ui->centralwidget->width()/3);
 }
-
 
 void MainWindow::AddToolBarSpacer(QToolBar *pToolBar,int width)
 {
@@ -389,13 +369,11 @@ void MainWindow::AddToolBarSpacer(QToolBar *pToolBar,int width)
     pToolBar->addWidget(spacer);
 }
 
-
 void MainWindow::resizeEvent(QResizeEvent *event)
 {
     resizeWindowsManual();
     QMainWindow::resizeEvent(event);
 }
-
 
 void MainWindow::keyPressEvent(QKeyEvent *event)
 {
@@ -733,6 +711,9 @@ void MainWindow::keyPressEvent(QKeyEvent *event)
     {
         qDebug() << "You Pressed NOT supported Key";
     }
+    
+    // CHANGE INPUT VALUES BASED ON SONAR VALUES
+    HandleNewKey(event);
 
     // OUTPUT VALUE TO DEBUG
     qDebug() << "x: " << manual_control.x;
@@ -740,7 +721,6 @@ void MainWindow::keyPressEvent(QKeyEvent *event)
     qDebug() << "z: " << manual_control.z;
     qDebug() << "r: " << manual_control.r;
 }
-
 
 void MainWindow::keyReleaseEvent(QKeyEvent *event)
 {
@@ -927,7 +907,6 @@ void MainWindow::keyReleaseEvent(QKeyEvent *event)
     qDebug() << "r: " << manual_control.r;
 }
 
-
 void MainWindow::on_actionVideo_triggered()
 {
     ui->mainStackedWidget->setCurrentIndex(0);
@@ -939,7 +918,6 @@ void MainWindow::on_actionVideo_triggered()
     ui->actionSonarGps->setDisabled(false);
 }
 
-
 void MainWindow::on_actionMenu_triggered()
 {
     ui->mainStackedWidget->setCurrentIndex(1);
@@ -950,7 +928,6 @@ void MainWindow::on_actionMenu_triggered()
     ui->actionSonarGps->setChecked(false);
     ui->actionSonarGps->setDisabled(false);
 }
-
 
 void MainWindow::modeComboBox_currentIndexChanged(int index)
 {
@@ -986,7 +963,6 @@ void MainWindow::modeComboBox_currentIndexChanged(int index)
     }
 }
 
-
 void MainWindow::armCheckBox_stateChanged(bool checked)
 {
     // ARM & DISARM ROBOT 
@@ -1016,6 +992,7 @@ void MainWindow::armCheckBox_stateChanged(bool checked)
     }
     else
     {
+        
     	// CHANGE ALL ROBOT INPUT VALUES TO ZERO BEFORE DISARMING
         manual_control.x = 0;
         manual_control.y = 0;
@@ -1033,7 +1010,6 @@ void MainWindow::armCheckBox_stateChanged(bool checked)
     }
 }
 
-
 void MainWindow::on_actionSonarGps_triggered()
 {
     ui->mainStackedWidget->setCurrentIndex(2);
@@ -1046,24 +1022,19 @@ void MainWindow::on_actionSonarGps_triggered()
 
 }
 
-
 void MainWindow::on_updateConfidence()
 {
-    // UPDATE SONAR VALUES DISTANCE AND CONFIDENCE - ALSO UPDATE WARNING AND DANGER
+    //SonarlValue
     float fDistance=pingLink->getDistance()/1000.0;
     float fConfidence=pingLink->getConfidence();
     QString strValue=QString("%1 METERS (%2\%)   ").arg(fDistance).arg(fConfidence);
     SonarlValue->setText(strValue);
-
-    // IF SONAR CONFIDENCE VALUE IS LESS THAN CONFIDENCE SETTING THEN OUTPUT FALSE - IGNORE SONAR DISTANCE VALUES
     if(fConfidence<ConfidenceSetting)
         return;
-    QString strLabelName="FALSE SONAR: ";//normal
+    QString strLabelName="Sonar: ";//normal
     QString strNormalsty="color: rgb(0, 0, 0);";
     QTime tcurrent=QTime::currentTime();
     QString mapTopLableText="";
-    
-    // IF SONAR DISTANCE VALUE IS GREATER THAN WARNING DISTANCE SETTING THEN OUTPUT NORMAL
     if(fDistance>WarnDistance)
     {
         SonarAlarm=false;
@@ -1071,8 +1042,6 @@ void MainWindow::on_updateConfidence()
         strNormalsty="color: rgb(0, 85, 0);";
         PrevTime=tcurrent;
     }
-    
-    // IF SONAR DISTANCE VALUE IS LESS THAN WARNING DISTANCE SETTING THEN OUTPUT WARNING
     else if(fDistance>MinDistance&&fDistance<WarnDistance)
     {
         SonarAlarm=false;
@@ -1080,23 +1049,17 @@ void MainWindow::on_updateConfidence()
         strNormalsty="color: rgb(245, 81, 0);";
         PrevTime=tcurrent;
     }
-    
-    // IF SONAR DISTANCE VALUE IS LESS THAN MIN DISTANCE SETTING THEN OUTPUT DANGER
     else if(fDistance<MinDistance)
     {
         SonarAlarm=true;
-        strLabelName="-DANGER- SONAR: ";
+        strLabelName="--DANGER-- SONAR: ";
         strNormalsty="color: rgb(255, 0, 0);";
-        mapTopLableText="PROXIMITY ALARM";
-
-        // RESET ALL ROBOT INPUT VALUES TO ZERO - HALT ROBOT INPUT
         manual_control.x = 0;
         manual_control.y = 0;
         manual_control.z = 500;
         manual_control.r = 0;
         manual_control.buttons = 0;
-
-        // IF SONAR DISTANCE VALUE IS LESS THAN MIN DISTANCE SETTING FOR ALARMSETTING SECONDS THEN OUTPUT COLLISION AVOIDANCE AND DISARM ROBOT
+        mapTopLableText="PROXIMITY ALARM";
         if(PrevTime.msecsTo(tcurrent)/1000>AlarmSetting)
         {
             armCheckBox->setChecked(false);
@@ -1105,9 +1068,8 @@ void MainWindow::on_updateConfidence()
             mapTopLableText="OBSTACLE AVOIDANCE ENGAGED - DISARMING ROBOT";
             PlayMediaFileMapText("collision");
         }
-    }
 
-    // SONAR VALUE UPDATE
+    }
     strNormalsty+="font: 87 10pt \"Arial Black\"";
     SonarLabel->setText(strLabelName);
     SonarLabel->setStyleSheet(strNormalsty);
@@ -1115,40 +1077,41 @@ void MainWindow::on_updateConfidence()
     UpdateMapTopLableText(mapTopLableText);
 }
 
-
 void MainWindow::on_statusChanged(QQuickWidget::Status status)
 {
-    // MAP STUFF
     if(status==QQuickWidget::Ready)
     {
+
         qmlTimer=ui->quickWidget_2->rootObject()->findChild<QObject*>("qmlTimer");
         //use ini file Coordinates
         UpdateMapCenterCoordinates(fMapCoordinates);
         UpdateMarkerCoordinates(fMarkerCoordinates);
+
+
     }
 }
-
-
 void MainWindow::on_mainStackedWidget_currentChanged(int arg1)
 {
-    // MAP STUFF?
+
     if(qmlTimer)
     {
         if(arg1==2)
         {
            QMetaObject::invokeMethod(qmlTimer,"start",Qt::QueuedConnection);
+
         }
         else
         {
             QMetaObject::invokeMethod(qmlTimer,"stop",Qt::QueuedConnection);
         }
+
     }
 }
 
 
 void MainWindow::CheckRollOrPitchChang(bool bTimerOut)
 {
-	// CHECK ROBOT ROLL AND PITCH VALUES - IF THEY ARE THE SAME FOR X SECONDS THEN RESTART CONNECTION
+
     QString strRoll=rollLabelValue->text();
     QString strPitch=pitchLabelValue->text();
 
@@ -1157,62 +1120,54 @@ void MainWindow::CheckRollOrPitchChang(bool bTimerOut)
         strRollValue=strRoll;
         strPitchValue=strPitch;
 
-        // START TIMER
+        //timer restart
         rollLPitchCheckTimer.start();
     }
     else
     {
         if(bTimerOut)
         {
-            // RESTART CONNECTION
+            //restart ping
             RestartNetWork();
         }
     }
 }
 
-
 void MainWindow::RestartNetWork()
 {
-    // RESTART THE CONNECTION TO ROBOT
-
-	// STOP ALL TIMERS
     rollLPitchCheckTimer.stop();
+
     vehicleDataUpdateTimer.stop();
     manualControlTimer.stop();
-
-    // RESET TO STARTING VALUES
     currentVehicle=1;
     firstRun = false;
-
-    // DISARM AND DISCONNECT FROM ROBOT
     armCheckBox->setChecked(false);
     armCheckBox_stateChanged(Qt::Unchecked);
     AS::as_api_deinit();
-
-    // RECONNECT TO THE ROBOT
     std::string ip("192.168.2.");
+
     AS::as_api_init(ip.c_str(), F_THREAD_ALL);
 
-    // RECONNECT TO PING SONAR AND RESTART TIMERS
+    //rest connect
     pingLink->connectLink();
     rollLPitchCheckTimer.start();
     vehicleDataUpdateTimer.start();
     manualControlTimer.start();
-}
 
+}
 
 void MainWindow::LoadInIConfig()
 {
-    // LOAD IN CONFIG FILE
     QSettings sets("Teleportal.ini",QSettings::IniFormat);
     if(!sets.allKeys().size())
     {
-        // GPS VALUES
+        //def value
+
         sets.setValue("GPS/MapCoordinates",QStringList{"-14.0094983494893","80.1233232234234"});
         sets.setValue("GPS/MarkerCoordinates",QStringList{"-14.0094983494893","80.1233232234234"});
         sets.setValue("GPS/ardusubCoordinates",false);
 
-        // KEYBOARD COMMAND PRESS
+        //press
         sets.setValue("KEYBOARD_KEYPRESS/forward",500);
         sets.setValue("KEYBOARD_KEYPRESS/backward",-500);
         sets.setValue("KEYBOARD_KEYPRESS/leftward",-500);
@@ -1224,7 +1179,7 @@ void MainWindow::LoadInIConfig()
         sets.setValue("KEYBOARD_KEYPRESS/turnLeftM",-500);
         sets.setValue("KEYBOARD_KEYPRESS/turnRightM",500);
 
-        // KEYBOARD COMMAND HOLD
+        //hold
         sets.setValue("KEYBOARD_KEYHOLD/forward",999);
         sets.setValue("KEYBOARD_KEYHOLD/backward",-999);
         sets.setValue("KEYBOARD_KEYHOLD/leftward",-999);
@@ -1236,7 +1191,7 @@ void MainWindow::LoadInIConfig()
         sets.setValue("KEYBOARD_KEYHOLD/turnLeftM",-300);
         sets.setValue("KEYBOARD_KEYHOLD/turnRightM",300);
 
-        // KEYBOARD COMMAND HOLD - SONAR WARNING
+        // hold SONAR WARNING
         sets.setValue("KEYBOARD_KEYHOLD_SONAR_WARNING/forward",500);
         sets.setValue("KEYBOARD_KEYHOLD_SONAR_WARNING/backward",-999);
         sets.setValue("KEYBOARD_KEYHOLD_SONAR_WARNING/leftward",-999);
@@ -1248,7 +1203,7 @@ void MainWindow::LoadInIConfig()
         sets.setValue("KEYBOARD_KEYHOLD_SONAR_WARNING/turnLeftM",-300);
         sets.setValue("KEYBOARD_KEYHOLD_SONAR_WARNING/turnRightM",300);
 
-        // KEYBOARD COMMAND PRESS - SONAR WARNING
+        //PRESS SONAR WARNING
         sets.setValue("KEYBOARD_KEYPRESS_SONAR_WARNING/forward",500);
         sets.setValue("KEYBOARD_KEYPRESS_SONAR_WARNING/backward",-500);
         sets.setValue("KEYBOARD_KEYPRESS_SONAR_WARNING/leftward",-500);
@@ -1260,7 +1215,7 @@ void MainWindow::LoadInIConfig()
         sets.setValue("KEYBOARD_KEYPRESS_SONAR_WARNING/turnLeftM",-500);
         sets.setValue("KEYBOARD_KEYPRESS_SONAR_WARNING/turnRightM",500);
 
-        // KEYBOARD COMMAND HOLD - SONAR ALARM
+        //KEYBOARD - KEYHOLD - SONAR ALARM
         sets.setValue("KEYBOARD_KEYHOLD_SONAR_ALARM/forward",0);
         sets.setValue("KEYBOARD_KEYHOLD_SONAR_ALARM/backward",-999);
         sets.setValue("KEYBOARD_KEYHOLD_SONAR_ALARM/leftward",-999);
@@ -1272,7 +1227,7 @@ void MainWindow::LoadInIConfig()
         sets.setValue("KEYBOARD_KEYHOLD_SONAR_ALARM/turnLeftM",-300);
         sets.setValue("KEYBOARD_KEYHOLD_SONAR_ALARM/turnRightM",300);
 
-        // KEYBOARD COMMAND PRESS - SONAR ALARM
+        //KEYBOARD - KEYPRESS - SONAR ALARM
         sets.setValue("KEYBOARD_KEYPRESS_SONAR_ALARM/forward",0);
         sets.setValue("KEYBOARD_KEYPRESS_SONAR_ALARM/backward",-500);
         sets.setValue("KEYBOARD_KEYPRESS_SONAR_ALARM/leftward",-500);
@@ -1284,39 +1239,34 @@ void MainWindow::LoadInIConfig()
         sets.setValue("KEYBOARD_KEYPRESS_SONAR_ALARM/turnLeftM",-500);
         sets.setValue("KEYBOARD_KEYPRESS_SONAR_ALARM/turnRightM",500);
 
-        // SONAR SETTINGS 
+
         sets.setValue("SONAR/WarnDistance",1.5);
         sets.setValue("SONAR/MinDistance",0.75);
         sets.setValue("SONAR/AlarmSetting",3);
         sets.setValue("SONAR/ConfidenceSetting",90);
         sets.setValue("SONAR/PingInterval",250);
+        //gamepad
 
-        // GAMEPAD SETTINGS
         sets.setValue("GAMEPAD/buttonL1","Qt::Key_F");
         sets.setValue("GAMEPAD/buttonR1","Qt::Key_R");
         sets.setValue("GAMEPAD/buttonUp","Qt::Key_T");
         sets.setValue("GAMEPAD/buttonDown","Qt::Key_G");
-        sets.setValue("GAMEPAD/buttonSelect","Qt::Key_4");
-        sets.setValue("GAMEPAD/buttonStart","Qt::Key_5");
-        sets.setValue("GAMEPAD/buttonX","Qt::Key_1");
-        sets.setValue("GAMEPAD/buttonY","Qt::Key_2");
-        sets.setValue("GAMEPAD/buttonB","Qt::Key_3");
+        //new key
+        sets.setValue("GAMEPAD/buttonSelect","Qt::Key_O");
+        sets.setValue("GAMEPAD/buttonStart","Qt::Key_L");
+        sets.setValue("GAMEPAD/buttonX","Qt::Key_H");
+        sets.setValue("GAMEPAD/buttonY","Qt::Key_B");
+        sets.setValue("GAMEPAD/buttonB","Qt::Key_M");
 
-        // MISC SETTINGS
-
-        // TIME IN SECONDS OF INACTIVITY BEFORE AUTO DISARM OF ROBOT
         sets.setValue("MISC/IdleSetting",180);
-
-        // TIME IN SECONDS SINCE THE LAST PICTURE WAS TAKEN BEFORE A NEW ONE CAN BE TAKEN
         sets.setValue("MISC/PhotoDelay",5);
     }
 
-    // GPS SETTINGS
     fMapCoordinates=sets.value("GPS/MapCoordinates").toStringList();
     fMarkerCoordinates=sets.value("GPS/MarkerCoordinates").toStringList();
     bardusubCoordinates=sets.value("GPS/ardusubCoordinates").toBool();
 
-    // KEYBOARD CONTROL SETTINGS
+    //keyControlValue
     keyControlValue_Press.forward=sets.value("KEYBOARD_KEYPRESS/forward").toInt();
     keyControlValue_Press.backward=sets.value("KEYBOARD_KEYPRESS/backward").toInt();
     keyControlValue_Press.leftward=sets.value("KEYBOARD_KEYPRESS/leftward").toInt();
@@ -1383,17 +1333,14 @@ void MainWindow::LoadInIConfig()
     keyControlValue_Alarm.turnLeftM=sets.value("KEYBOARD_KEYPRESS_SONAR_ALARM/turnLeftM").toInt();
     keyControlValue_Alarm.turnRightM=sets.value("KEYBOARD_KEYPRESS_SONAR_ALARM/turnRightM").toInt();
 
-    // SONAR SETTINGS
+
     WarnDistance=sets.value("SONAR/WarnDistance").toFloat();
     MinDistance=sets.value("SONAR/MinDistance").toFloat();
     AlarmSetting=sets.value("SONAR/AlarmSetting").toInt();
     ConfidenceSetting=sets.value("SONAR/ConfidenceSetting").toInt();
     PingSensor::_firmwareDefaultPingInterval=sets.value("SONAR/PingInterval").toInt();
-
-    // MISC SETTINGS
     iIdleSetting=sets.value("MISC/IdleSetting").toUInt();
 
-    // PHOTO SETTINGS
     strTakPhontoName=sets.value("MISC/TakPhontoName").toString();
     strRemoteDir=sets.value("MISC/RemoteDir").toString();
     strHost=sets.value("MISC/host").toString();
@@ -1402,21 +1349,18 @@ void MainWindow::LoadInIConfig()
     strPhotoDelay=sets.value("MISC/PhotoDelay").toInt();
 }
 
-
 void MainWindow::UpdateMapCenterCoordinates(QStringList coord)
 {
-    // UPDATE MAP CENTER
     QObject* mapView=ui->quickWidget_2->rootObject()->findChild<QObject*>("qmlMapView");
     QGeoCoordinate qmlCoord=mapView->property("center").value<QGeoCoordinate>();
     qmlCoord.setLatitude(coord.at(0).toDouble());
     qmlCoord.setLongitude(coord.at(1).toDouble());
     mapView->setProperty("center",QVariant::fromValue(qmlCoord));
-}
 
+}
 
 void MainWindow::UpdateMarkerCoordinates(QStringList coord)
 {
-    // UPDATE ROBOT ICON LOCATION
     QObject* markerItem=ui->quickWidget_2->rootObject()->findChild<QObject*>("markerItem");
     QGeoCoordinate qmlCoord=markerItem->property("coordinate").value<QGeoCoordinate>();
     qmlCoord.setLatitude(coord.at(0).toDouble());
@@ -1424,18 +1368,97 @@ void MainWindow::UpdateMarkerCoordinates(QStringList coord)
     markerItem->setProperty("coordinate",QVariant::fromValue(qmlCoord));
 }
 
-
 void MainWindow::UpdateModeLable()
 {
-    // THIS HAS BEEN REMOVED
-}
+    //modeComboBox Manual, Stability, Depth hold
+    //F_THREAD_FETCH_FULL_PARAM
 
+/*  29062020 Adam: Removed due to bug
+
+    QString strMode="unknown";
+    if(vehicle_data)
+    {
+
+            if(vehicle_data->custom_mode==AS::ALT_HOLD)
+            {
+                strMode="Depth hold";
+            }
+            else if(vehicle_data->custom_mode==AS::MANUAL)
+            {
+                strMode="Manual";
+            }
+            else
+            {
+                strMode="Stability";
+            }
+            if(vehicle_data->system_status==AS::SYS_ARMED&&!armCheckBox->isChecked())
+            {
+                armCheckBox->setChecked(true);
+                armCheckBox_stateChanged(true);
+            }
+            else if(vehicle_data->system_status==AS::SYS_DISARMED&&armCheckBox->isChecked())
+            {
+                armCheckBox->setChecked(false);
+                armCheckBox_stateChanged(Qt::Unchecked);
+            }
+
+
+    }
+    modeComboBox->setText(strMode);
+    */
+}
 
 void MainWindow::HandleNewKey(QKeyEvent *event)
 {
-    	// THIS HAS BEEN REMOVED
-}
+    if(event->key()==Qt::Key_O)
+    {
+        //Disarm
+        if(armCheckBox->isChecked())
+        {
+            armCheckBox->setChecked(false);
+            armCheckBox_stateChanged(false);
+        }
+    }
+    else if(event->key()==Qt::Key_L)
+    {
+        //arm
+        if(!armCheckBox->isChecked())
+        {
+            armCheckBox->setChecked(true);
+            armCheckBox_stateChanged(true);
+        }
+    }
+    else if(event->key()==Qt::Key_H)
+    {
+        //Depth Hold Mode
+            m_modeIndex = 2;
+            //AS::as_api_set_mode(currentVehicle,AS::ALT_HOLD);            //29062020 Adam: Trying old system instead
+            manual_control.buttons = 4;
+            modeComboBox->setText("Depth Hold");
+            PlayMediaFileMapText("depth");
 
+    }
+    else if(event->key()==Qt::Key_B)
+    {
+        //Stablilize
+            m_modeIndex = 1;
+            //AS::as_api_set_mode(currentVehicle,AS::STABILIZE);            //29062020 Adam: Trying old system instead
+            manual_control.buttons = 8;
+            modeComboBox->setText("Stability");
+            PlayMediaFileMapText("stability");
+
+    }
+    else if(event->key()==Qt::Key_M)
+    {
+        //Manual
+            m_modeIndex = 0;
+            //AS::as_api_set_mode(currentVehicle,AS::MANUAL);					//29062020 Adam: Trying old system instead
+            manual_control.buttons = 2;
+            modeComboBox->setText("Manual");
+            PlayMediaFileMapText("manual");
+
+    }
+}
 
 void MainWindow::InitGamePad()
 {
@@ -1443,10 +1466,8 @@ void MainWindow::InitGamePad()
     connect(QGamepadManager::instance(),SIGNAL(gamepadDisconnected(int)), this,SLOT(on_gamepadDisconnected(int)));
 }
 
-
 void MainWindow::LoadMapingKey()
 {
-    // LOAD GAMEPAD MAPPING KEYS
     static QMap<QString,Qt::Key> keymap{
         {"Qt::Key_F",Qt::Key_F},
         {"Qt::Key_R",Qt::Key_R},
@@ -1484,11 +1505,8 @@ void MainWindow::LoadMapingKey()
     }
 }
 
-
 void MainWindow::UpdateKeyControlValue(bool bPress)
 {
-    // ON KEYBOARD INPUT CHANGE INPUT VALUES BASED ON SONAR DISTANCE VALUE
-    // THESE VALUES SEEM WRONG - BUT WORK?
     keyControlValue_t keyControlValue_Up;
     keyControlValue_t keyControlValue_Down;
     QString strLable=SonarLabel->text();
@@ -1517,10 +1535,8 @@ void MainWindow::UpdateKeyControlValue(bool bPress)
     }
 }
 
-
 void MainWindow::on_setQmlText()
 {
-    // RESET LARGE WARNING TEXT IF NO WARNING
     QObject* markerItem=ui->quickWidget->rootObject()->findChild<QObject*>("videoLabel");
     if(markerItem)
     {
@@ -1534,10 +1550,9 @@ void MainWindow::on_setQmlText()
     }
 }
 
-
 void MainWindow::UpdateMapTopLableText(QString strTip)
 {
-	// RESET COLLISION WARNING AFTER 5 SECONDS
+
     mapTextCache=strTip;
     if(bmapState)
         return;
@@ -1550,8 +1565,11 @@ void MainWindow::UpdateMapTopLableText(QString strTip)
             emit SetQMLText();
         });
     }
-}
 
+
+
+
+}
 
 void MainWindow::PlayMediaFileMapText(QString strText)
 {
@@ -1607,8 +1625,6 @@ void MainWindow::PlayMediaFileMapText(QString strText)
             fileUrl=QUrl("qrc:/assets/mp3/goodbye.mp3");
         }
         player->setMedia(fileUrl);
-        
-        // MUTE VOLUME IF CHECKED ON TOOLBAR
         if(!ui->actionMute->isChecked())
         {
             player->setVolume(50);
@@ -1621,11 +1637,8 @@ void MainWindow::PlayMediaFileMapText(QString strText)
         player->play();
 }
 
-
 void MainWindow::on_axisLeftXChanged(double value)
 {
-    // SIMPLE GAMEPAD TO KEYBOARD INPUTS FOR X AXIS
-
     //value rang -1.0 1.0
     QKeyEvent *event=nullptr;
     if(value>0.8)
@@ -1652,10 +1665,8 @@ void MainWindow::on_axisLeftXChanged(double value)
     }
 }
 
-
 void MainWindow::on_axisLeftYChanged(double value)
 {
-    // SIMPLE GAMEPAD TO KEYBOARD INPUTS FOR Y AXIS
     QKeyEvent *event=nullptr;
     if(value<-0.8)
     {
@@ -1681,10 +1692,8 @@ void MainWindow::on_axisLeftYChanged(double value)
     }
 }
 
-
 void MainWindow::on_axisRightXChanged(double value)
 {
-    // SIMPLE GAMEPAD TO KEYBOARD INPUTS FOR ROTATION AXIS
     QKeyEvent *event=nullptr;
     if(value>0.8)
     {
@@ -1710,10 +1719,8 @@ void MainWindow::on_axisRightXChanged(double value)
     }
 }
 
-
 void MainWindow::on_axisRightYChanged(double value)
 {
-    // SIMPLE GAMEPAD TO KEYBOARD INPUTS FOR Z AXIS
     QKeyEvent *event=nullptr;
     if(value<-0.8)
     {
@@ -1739,10 +1746,8 @@ void MainWindow::on_axisRightYChanged(double value)
     }
 }
 
-
 void MainWindow::on_gamepadConnected(int deviceId)
 {
-    // CONNECT GAMEPAD
     if(!_gamepad)
     {
         _gamepad=new QGamepad(deviceId,this);
@@ -1759,10 +1764,8 @@ void MainWindow::on_gamepadConnected(int deviceId)
     connect(_gamepad,&QGamepad::axisRightYChanged,this,&MainWindow::on_axisRightYChanged);
 }
 
-
 void MainWindow::on_gamepadDisconnected(int deviceId)
 {
-    // DISCONNECT GAMEPAD
     if(_gamepad)
     {
         if(_gamepad->deviceId()==deviceId)
@@ -1785,21 +1788,16 @@ void MainWindow::on_gamepadDisconnected(int deviceId)
 
 void MainWindow::on_actionTakePhoto_triggered()
 {
-    // TAKE SCREENSHOT PHOTO AND UPLOAD TO SFTP SERVER
-
-    // DISABLE PHOTO ICON FOR PHOTO DELAY SETTING SECONDS
     ui->actionTakePhoto->setDisabled(true);
     QTimer::singleShot(strPhotoDelay*1000, this,[&]()
     {
          ui->actionTakePhoto->setEnabled(true);
-    });
 
-    // TAKE SCREENSHOT OF PROGRAM WINDOW
+    });
     QScreen* scr=this->screen();
     QPixmap result = scr->grabWindow(this->winId());
-
-    // SAVE FILE LOCALLYS USING PHOTO SETTINGS
     QFileInfo info(strTakPhontoName);
+
     QString strTime=QDateTime::currentDateTime().toString("yyyyMMddHHmmss");
     QString strLocaTempFile="sftpfile/";
     strLocaTempFile+=info.baseName();
@@ -1808,9 +1806,8 @@ void MainWindow::on_actionTakePhoto_triggered()
     strLocaTempFile+=info.suffix();
     QDir dir;
     dir.mkdir("sftpfile");
-    result.save(strLocaTempFile);
 
-    // UPLOAD LOCAL FILE TO SFTP SERVER 
+    result.save(strLocaTempFile);
     static SecureFileUploader sftp;
     connect(&sftp,&SecureFileUploader::SftpEndcomplete,this,[&]{
         bsftpIdle=true;
@@ -1819,4 +1816,4 @@ void MainWindow::on_actionTakePhoto_triggered()
     sftp.upload(strLocaTempFile,strRemoteDir,strHost,strUser,strPass);
 }
 
-	// HEY THIS WAS A HARD PROJECT TO LEARN TO CODE WITH - GIVE ME A BREAK
+
