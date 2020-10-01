@@ -120,10 +120,18 @@ void MainWindow::setupToolBars()
     ui->vehicleToolBar->addActions(actionListDisarm);
 
     armCheckBox = new QPushButton(this);
-     armCheckBox->setText("CLICK TO START - ROBOT UNARMED");
-     armCheckBox->setCheckable(true);
-     armCheckBox->setChecked(false);
-    armCheckBox->setStyleSheet("color: rgb(0, 206, 0);font: 87 12pt \"Arial Black\";");
+    armCheckBox->setText("CLICK TO START - ROBOT UNARMED");
+    armCheckBox->setCheckable(true);
+    armCheckBox->setChecked(false);
+   armCheckBox->setStyleSheet("border-style: outset;"
+                              "border-width: 1px;"
+                              "border-radius: 2px;"
+                              "border-color: beige;"
+                              "min-width: 10em;"
+                              "padding: 6px;"
+                              "background:rgb(0, 255, 0);"
+                              "color: rgb(255, 255, 255);"
+                              "font: 87 12pt \"Arial Black\";");
     armCheckBox->setFocusPolicy(Qt::NoFocus);
     AddToolBarSpacer(ui->vehicleToolBar);
     ui->vehicleToolBar->addWidget(armCheckBox);
@@ -146,7 +154,7 @@ void MainWindow::setupToolBars()
 
     // SONAR DISPLAY
     SonarLabel=new QLabel("SONAR: ");
-    SonarlValue = new QLabel("21.0 METERS (95%)   ");
+    SonarlValue = new QLabel("21.0 M (95%)   ");
     SonarlValue->setFocusPolicy(Qt::NoFocus);
     SonarLabel->setStyleSheet("font: 87 10pt \"Arial Black\"");
     SonarlValue->setStyleSheet("font: 87 10pt \"Arial Black\"");
@@ -178,7 +186,7 @@ void MainWindow::setupToolBars()
 	//DEPTH DISPLAY 
     QLabel *depthLabel = new QLabel("DEPTH: ", this);
     depthLabel->setFocusPolicy(Qt::NoFocus);
-    depthLabelValue = new QLabel("0.00 METERS", this);
+    depthLabelValue = new QLabel("0.00 M", this);
     depthLabelValue->setFocusPolicy(Qt::NoFocus);
     depthLabelValue->setStyleSheet("font: 87 10pt \"Arial Black\"");
     depthLabel->setStyleSheet("font: 87 10pt \"Arial Black\"");
@@ -308,16 +316,31 @@ void MainWindow::updateVehicleData()
 
     //DEPTH VALUES
     depthLabelValue->setNum(round(depth * 100) / 100.0);
-    depthLabelValue->setText(depthLabelValue->text()+" METERS");
+    depthLabelValue->setText(depthLabelValue->text()+" M");
 
     //COMPASS VALUES
     ui->qCompass->setYaw(yawLableCompass);
     if(ui->quickWidget_2->status()==QQuickWidget::Ready)
     {
+        if(bardusubCoordinates)
+        {
+            //use dev coord
+            if(m_devlat!=vehicle_data->lat||
+               m_devlon!=vehicle_data->lon)
+            {
+                m_devlat=vehicle_data->lat;
+                m_devlon=vehicle_data->lon;
+                double d1e7=qPow(10,7);
+                QStringList CoordList {QString::number((double)m_devlat/d1e7),QString::number((double)m_devlon/d1e7)};
+                UpdateMapCenterCoordinates(CoordList);
+                UpdateMarkerCoordinates(CoordList);
+            }
+        }
         QQuickItem* pImgItem=ui->quickWidget_2->rootObject()->findChild<QQuickItem*>("markerimg");
         if(pImgItem)
         {
             pImgItem->setRotation(yawLableCompass);
+
         }
     }
 
@@ -367,9 +390,19 @@ void MainWindow::resizeWindowsManual()
 
 void MainWindow::ResizeToolBar()
 {
-    ui->tabsToolBar->setFixedWidth( ui->centralwidget->width()/3);
-    ui->vehicleToolBar->setFixedWidth( ui->centralwidget->width()/3);
-    ui->statusToolBar->setFixedWidth( ui->centralwidget->width()/3);
+    QSize isize=ui->statusToolBar->sizeHint();
+    int setW=ui->centralwidget->width()/3;
+    if(setW<isize.width())
+    {
+        ui->statusToolBar->setFixedWidth(isize.width());
+    }
+    else
+    {
+         ui->tabsToolBar->setFixedWidth(setW);
+         ui->statusToolBar->setFixedWidth(setW);
+         ui->vehicleToolBar->setFixedWidth(setW);
+    }
+
 }
 
 
@@ -706,7 +739,15 @@ void MainWindow::keyPressEvent(QKeyEvent *event)
 
          // DISARM ROBOT
          AS::as_api_vehicle_disarm(currentVehicle, 1);
-         armCheckBox->setStyleSheet("color: rgb(0, 206, 0);font: 87 12pt \"Arial Black\";");
+         armCheckBox->setStyleSheet("border-style: outset;"
+                                    "border-width: 1px;"
+                                    "border-radius: 2px;"
+                                    "border-color: beige;"
+                                    "min-width: 10em;"
+                                    "padding: 6px;"
+                                    "background:rgb(0, 255, 0);"
+                                    "color: rgb(255, 255, 255);"
+                                    "font: 87 12pt \"Arial Black\";");
          armCheckBox->setText("CLICK TO START - ROBOT UNARMED");
          UpdateMapTopLableText("");
          PlayMediaFileMapText("disarm");
@@ -721,7 +762,15 @@ void MainWindow::keyPressEvent(QKeyEvent *event)
 
          // ARM ROBOT
          AS::as_api_vehicle_arm(currentVehicle, 1);
-         armCheckBox->setStyleSheet("color: rgb(255, 0, 0);font: 87 12pt \"Arial Black\";");
+         armCheckBox->setStyleSheet("border-style: outset;"
+                                    "border-width: 1px;"
+                                    "border-radius: 2px;"
+                                    "border-color: beige;"
+                                    "min-width: 10em;"
+                                    "padding: 6px;"
+                                    "background:rgb(255,0, 0);"
+                                    "color: rgb(255, 255, 255);"
+                                    "font: 87 12pt \"Arial Black\";");
          armCheckBox->setText("ROBOT ARMED");
          UpdateMapTopLableText("");
          PlayMediaFileMapText("arm");
@@ -997,7 +1046,15 @@ void MainWindow::armCheckBox_stateChanged(bool checked)
     	// IF NO CONNECTION TO ROBOT
         qDebug() << "vehicle: " << currentVehicle << "is not ready!";
         armCheckBox->setChecked(false);
-        armCheckBox->setStyleSheet("color: rgb(0, 206, 0);font: 87 12pt \"Arial Black\";");
+        armCheckBox->setStyleSheet("border-style: outset;"
+                                   "border-width: 1px;"
+                                   "border-radius: 2px;"
+                                   "border-color: beige;"
+                                   "min-width: 10em;"
+                                   "padding: 6px;"
+                                   "background:rgb(0, 255, 0);"
+                                   "color: rgb(255, 255, 255);"
+                                   "font: 87 12pt \"Arial Black\";");
         armCheckBox->setText("CLICK TO START - ROBOT UNARMED");
         UpdateMapTopLableText("NO CONNECTION TO ROBOT");
         return;
@@ -1008,7 +1065,15 @@ void MainWindow::armCheckBox_stateChanged(bool checked)
         
     	// ARM ROBOT
         AS::as_api_vehicle_arm(currentVehicle, 1);
-        armCheckBox->setStyleSheet("color: rgb(255, 0, 0);font: 87 12pt \"Arial Black\";");
+        armCheckBox->setStyleSheet("border-style: outset;"
+                                   "border-width: 1px;"
+                                   "border-radius: 2px;"
+                                   "border-color: beige;"
+                                   "min-width: 10em;"
+                                   "padding: 6px;"
+                                   "background:rgb(255,0, 0);"
+                                   "color: rgb(255, 255, 255);"
+                                   "font: 87 12pt \"Arial Black\";");
         armCheckBox->setText("ROBOT ARMED");
         UpdateMapTopLableText("");
         PlayMediaFileMapText("arm");
@@ -1025,7 +1090,15 @@ void MainWindow::armCheckBox_stateChanged(bool checked)
 
         // DISARM ROBOT
         AS::as_api_vehicle_disarm(currentVehicle, 1);
-        armCheckBox->setStyleSheet("color: rgb(0, 206, 0);font: 87 12pt \"Arial Black\";");
+        armCheckBox->setStyleSheet("border-style: outset;"
+                                   "border-width: 1px;"
+                                   "border-radius: 2px;"
+                                   "border-color: beige;"
+                                   "min-width: 10em;"
+                                   "padding: 6px;"
+                                   "background:rgb(0, 255, 0);"
+                                   "color: rgb(255, 255, 255);"
+                                   "font: 87 12pt \"Arial Black\";");
         armCheckBox->setText("CLICK TO START - ROBOT UNARMED");
         UpdateMapTopLableText("");
         PlayMediaFileMapText("disarm");
@@ -1052,7 +1125,7 @@ void MainWindow::on_updateConfidence()
     // UPDATE SONAR VALUES DISTANCE AND CONFIDENCE - ALSO UPDATE WARNING AND DANGER
     float fDistance=pingLink->getDistance()/1000.0;
     float fConfidence=pingLink->getConfidence();
-    QString strValue=QString("%1 METERS (%2\%)   ").arg(fDistance).arg(fConfidence);
+    QString strValue=QString("%1 M (%2\%)   ").arg(fDistance).arg(fConfidence);
     SonarlValue->setText(strValue);
 
     // IF SONAR CONFIDENCE VALUE IS LESS THAN CONFIDENCE SETTING THEN OUTPUT FALSE - IGNORE SONAR DISTANCE VALUES
@@ -1131,6 +1204,7 @@ void MainWindow::on_statusChanged(QQuickWidget::Status status)
 
 void MainWindow::on_mainStackedWidget_currentChanged(int arg1)
 {
+ /*
     // MAP STUFF?
     if(qmlTimer)
     {
@@ -1143,6 +1217,7 @@ void MainWindow::on_mainStackedWidget_currentChanged(int arg1)
             QMetaObject::invokeMethod(qmlTimer,"stop",Qt::QueuedConnection);
         }
     }
+    */
 }
 
 
@@ -1312,8 +1387,8 @@ void MainWindow::LoadInIConfig()
     }
 
     // GPS SETTINGS
-    fMapCoordinates=sets.value("GPS/MapCoordinates").toStringList();
-    fMarkerCoordinates=sets.value("GPS/MarkerCoordinates").toStringList();
+    fMapCoordinates=sets.value("GPS/MapCoordinates",QStringList{"-14.0094983494893","80.1233232234234"}).toStringList();
+    fMarkerCoordinates=sets.value("GPS/MarkerCoordinates",QStringList{"-14.0094983494893","80.1233232234234"}).toStringList();
     bardusubCoordinates=sets.value("GPS/ardusubCoordinates").toBool();
 
     // KEYBOARD CONTROL SETTINGS
@@ -1428,6 +1503,36 @@ void MainWindow::UpdateMarkerCoordinates(QStringList coord)
 void MainWindow::UpdateModeLable()
 {
     // THIS HAS BEEN REMOVED
+    if(vehicle_data)
+    {
+        if(vehicle_data->custom_mode==AS::ALT_HOLD)
+        {
+             modeComboBox->setText("Depth Hold");
+        }
+        else if(vehicle_data->custom_mode==AS::MANUAL)
+        {
+            modeComboBox->setText("Manual");
+        }
+        else if(vehicle_data->custom_mode==AS::STABILIZE)
+        {
+            modeComboBox->setText("Stability");
+        }
+        if(vehicle_data->system_status==AS::SYS_DISARMED&&armCheckBox->text()!="CLICK TO START - ROBOT UNARMED")
+        {
+            armCheckBox->setStyleSheet("border-style: outset;"
+                                       "border-width: 1px;"
+                                       "border-radius: 2px;"
+                                       "border-color: beige;"
+                                       "min-width: 10em;"
+                                       "padding: 6px;"
+                                       "background:rgb(0, 255, 0);"
+                                       "color: rgb(255, 255, 255);"
+                                       "font: 87 12pt \"Arial Black\";");
+            armCheckBox->setText("CLICK TO START - ROBOT UNARMED");
+            UpdateMapTopLableText("");
+            PlayMediaFileMapText("disarm");
+        }
+    }
 }
 
 
