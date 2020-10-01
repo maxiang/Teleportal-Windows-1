@@ -286,6 +286,9 @@
    <property name="text">
     <string>Take Photo</string>
    </property>
+   <property name="shortcut">
+    <string>C</string>
+   </property>
   </action>
  </widget>
  <customwidgets>
