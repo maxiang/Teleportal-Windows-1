@@ -64,10 +64,12 @@ MainWindow::MainWindow(QWidget *parent)		//START APPLICATION
     m_modeIndex = 1;
     IdleTime = 1;
     firstRun = false;
+    robot_status_delay = false;
 
-    // DISPLAY VIDEO AND LOAD TOOLBAR
+    // SETUP VIDEO AND TOOLBAR
     on_actionVideo_triggered();
     setupToolBars();
+
 
     // SETUP FOCUS POLICY
     setFocusPolicy(Qt::StrongFocus);
@@ -232,13 +234,11 @@ void MainWindow::on_modeBt_clicked(){
    	//WHEN USER CLICKS ON MODE BUTTON - CHANGE MODE
     QKeyEvent* event=nullptr;
 
-		//CHECK IF ROBOT IS ARMED
 		if (!armCheckBox->isChecked())		
         {
             return;
-        }
+         }
 
-        //CHANGE TO THE NEXT MODE
 	    if(modeComboBox->text()=="DEPTH HOLD")
 	    {
 	        event=new QKeyEvent(QEvent::KeyPress,Qt::Key_3, Qt::NoModifier);
@@ -254,7 +254,8 @@ void MainWindow::on_modeBt_clicked(){
 		if(event)
 		    {
 		        QGuiApplication::sendEvent(this, event);
-		    }   
+		    }
+			    
 }
 
 
@@ -287,9 +288,11 @@ void MainWindow::updateVehicleData()
             armCheckBox->setChecked(false);				// DISARM ROBOT
             armCheckBox_stateChanged(true);
             firstRun = true;
+            //QGuiApplication::sendEvent(this,new QKeyEvent(QEvent::KeyPress,Qt::Key_B, Qt::NoModifier));
             m_modeIndex = 1;
             manual_control.buttons = 8;            		 // STABILITY MODE
             modeComboBox->setText("STABILITY");
+
             PlayMediaFileMapText("reconnect");			//PLAY WELCOME BACK MP3
     }
 
@@ -331,7 +334,7 @@ void MainWindow::updateVehicleData()
     {
         if(bardusubCoordinates)
         {
-            //use robot coord for map?
+            //use dev coord
             if(m_devlat!=vehicle_data->lat||
                m_devlon!=vehicle_data->lon)
             {
@@ -347,6 +350,7 @@ void MainWindow::updateVehicleData()
         if(pImgItem)
         {
             pImgItem->setRotation(yawLableCompass);
+
         }
     }
 
@@ -384,9 +388,12 @@ void MainWindow::manualControl()
 void MainWindow::resizeWindowsManual()
 {
     int m_width = ui->videoPage->width();
+
     ui->quickWidget->setGeometry(0, 0, m_width, ui->videoPage->height());
+
     ui->qCompass->setGeometry(m_width - 160, 0, 160, 160);
     ui->qADI->setGeometry(m_width - 160, 160, 160, 160);
+    //ui->TakePhoto->move(m_width - 160+(ui->qADI->width()/2-ui->TakePhoto->width()/2),326);
     ResizeToolBar();
 }
 
@@ -778,38 +785,6 @@ void MainWindow::keyPressEvent(QKeyEvent *event)
          qDebug() << "ARM";
          
      }
-     
-     // KEY C - TAKE PHOTO
-     else if (event->key() == Qt::Key_C)
-     {
-         qDebug() << "You Pressed Key C - TAKE PHOTO";
-         // TAKE PHOTO
-         on_actionTakePhoto_triggered();
-     }
-
-      // KEY H - HELP
-     else if (event->key() == Qt::Key_H)
-     {
-         qDebug() << "You Pressed Key H - HELP";
-         // DISPLAY HELP MENU
-         on_actionMenu_triggered();
-     }
-
-     // KEY M - MAP
-     else if (event->key() == Qt::Key_M)
-     {
-         qDebug() << "You Pressed Key M - MAP";
-         // DISPLAY HELP MENU
-         on_actionSonarGps_triggered();
-     }
-
-     // KEY V - VIDEO
-     else if (event->key() == Qt::Key_V)
-     {
-         qDebug() << "You Pressed Key V - VIDEO";
-         // DISPLAY HELP MENU
-         on_actionVideo_triggered();
-     }
 
     else
     {
@@ -827,7 +802,6 @@ void MainWindow::keyPressEvent(QKeyEvent *event)
 void MainWindow::keyReleaseEvent(QKeyEvent *event)
 {
     // ON KEY RELEASE CHANGE ROBOT COMMANDS BACK TO IDLE VALUES
-
     if (event->isAutoRepeat())
     {
          // IF THE KEY RELEASES TO MANY TIMES? I HAVE NO IDEA WHY THIS IS HERE.
@@ -1072,7 +1046,7 @@ void MainWindow::modeComboBox_currentIndexChanged(int index)
 
 void MainWindow::armCheckBox_stateChanged(bool checked)
 {
-    // ARM & DISARM ROBOT WHEN BUTTON IS CLICKED
+    // ARM & DISARM ROBOT 
 
     if (!AS::as_api_check_vehicle(currentVehicle))
     {
@@ -1143,9 +1117,6 @@ void MainWindow::armCheckBox_stateChanged(bool checked)
 
 void MainWindow::on_actionSonarGps_triggered()
 {
-   
-   //WHEN MAP BUTTON IS PRESSED SHOW MAP
-
     ui->mainStackedWidget->setCurrentIndex(2);
     ui->actionSonarGps->setChecked(true);
     ui->actionSonarGps->setDisabled(true);
@@ -1153,6 +1124,7 @@ void MainWindow::on_actionSonarGps_triggered()
     ui->actionMenu->setDisabled(false);
     ui->actionVideo->setChecked(false);
     ui->actionVideo->setDisabled(false);
+
 }
 
 
@@ -1161,8 +1133,8 @@ void MainWindow::on_updateConfidence()
     // UPDATE SONAR VALUES DISTANCE AND CONFIDENCE - ALSO UPDATE WARNING AND DANGER
     float fDistance=pingLink->getDistance()/1000.0;
     float fConfidence=pingLink->getConfidence();
-    //QString strValue=QString("%1 M (%2\%)   ").arg(fDistance = floor(100*fDistance) / 100).arg(fConfidence);    
-    QString strValue=QString("%1 M (%2\%)   ").arg(round(fDistance * 100) / 100.0).arg(fConfidence);    //LIMIT DISTANCE TO 0.00 
+    //QString strValue=QString("%1 M (%2\%)   ").arg(fDistance = floor(100*fDistance) / 100).arg(fConfidence);    //LIMIT DISTANCE TO 0.00 ("%.3lf",fDistance)
+    QString strValue=QString("%1 M (%2\%)   ").arg(round(fDistance * 100) / 100.0).arg(fConfidence);
     SonarlValue->setText(strValue);
 
     // IF SONAR CONFIDENCE VALUE IS LESS THAN CONFIDENCE SETTING THEN OUTPUT FALSE - IGNORE SONAR DISTANCE VALUES
@@ -1195,7 +1167,7 @@ void MainWindow::on_updateConfidence()
     else if(fDistance<MinDistance)
     {
         SonarAlarm=true;
-        strLabelName="DANGER SONAR: ";
+        strLabelName="-DANGER- SONAR: ";
         strNormalsty="color: rgb(255, 0, 0);";
         mapTopLableText="PROXIMITY ALARM";
 
@@ -1539,7 +1511,7 @@ void MainWindow::UpdateMarkerCoordinates(QStringList coord)
 
 void MainWindow::UpdateModeLable()
 {
-    // CHECK ROBOT DATA AND CHANGE BUTTON TO SHOW ACTUAL ROBOT MODE
+    // THIS HAS BEEN REMOVED
     if(vehicle_data)
     {
         if(vehicle_data->custom_mode==AS::ALT_HOLD)
@@ -1558,8 +1530,7 @@ void MainWindow::UpdateModeLable()
             m_modeIndex = 1;
         }
         
-  		// CHECK ROBOT DATA AND CHANGE BUTTON TO SHOW ACTUAL ROBOT ARM STATUS WITH 2 SECOND DELAY
-
+        //if(vehicle_data->system_status==AS::SYS_DISARMED&&armCheckBox->text()!="CLICK TO START - ROBOT DISARMED")
         if(vehicle_data->system_status==3&&armCheckBox->text()!="CLICK TO START - ROBOT DISARMED")
         {
             QTimer::singleShot(2000, this,[&]()
@@ -1581,9 +1552,11 @@ void MainWindow::UpdateModeLable()
             			PlayMediaFileMapText("disarm");
          				}
     			});
+             
         }
-        qDebug() << "dive mode: " << vehicle_data->custom_mode;
-    	qDebug() << "arm status: " << vehicle_data->system_status;
+        
+        qDebug() << "mode: " << vehicle_data->custom_mode;
+    	qDebug() << "status: " << vehicle_data->system_status;
     }
 }
 
@@ -1609,13 +1582,12 @@ void MainWindow::LoadMapingKey()
         {"Qt::Key_R",Qt::Key_R},
         {"Qt::Key_T",Qt::Key_T},
         {"Qt::Key_G",Qt::Key_G},
-        {"Qt::Key_4",Qt::Key_4},
-        {"Qt::Key_5",Qt::Key_5},
-        {"Qt::Key_2",Qt::Key_2},
-        {"Qt::Key_1",Qt::Key_1},
-        {"Qt::Key_3",Qt::Key_3}
+        {"Qt::Key_O",Qt::Key_O},
+        {"Qt::Key_L",Qt::Key_L},
+        {"Qt::Key_H",Qt::Key_H},
+        {"Qt::Key_B",Qt::Key_B},
+        {"Qt::Key_M",Qt::Key_M}
     };
-
     if(_gameKeyNavigation)
     {
          QSettings sets("Teleportal.ini",QSettings::IniFormat);
@@ -1623,11 +1595,12 @@ void MainWindow::LoadMapingKey()
          _gameKeyNavigation->setButtonR1Key(keymap[sets.value("GAMEPAD/buttonR1","Qt::Key_R").toString()]);
          _gameKeyNavigation->setUpKey(keymap[sets.value("GAMEPAD/buttonUp","Qt::Key_T").toString()]);
          _gameKeyNavigation->setDownKey(keymap[sets.value("GAMEPAD/buttonDown","Qt::Key_G").toString()]);
-         _gameKeyNavigation->setButtonSelectKey(keymap[sets.value("GAMEPAD/buttonSelect","Qt::Key_4").toString()]);
-         _gameKeyNavigation->setButtonStartKey(keymap[sets.value("GAMEPAD/buttonStart","Qt::Key_5").toString()]);
-         _gameKeyNavigation->setButtonXKey(keymap[sets.value("GAMEPAD/buttonX","Qt::Key_2").toString()]);
-         _gameKeyNavigation->setButtonYKey(keymap[sets.value("GAMEPAD/buttonY","Qt::Key_1").toString()]);
-         _gameKeyNavigation->setButtonBKey(keymap[sets.value("GAMEPAD/buttonB","Qt::Key_3").toString()]);
+         //new key
+         _gameKeyNavigation->setButtonSelectKey(keymap[sets.value("GAMEPAD/buttonSelect","Qt::Key_O").toString()]);
+         _gameKeyNavigation->setButtonStartKey(keymap[sets.value("GAMEPAD/buttonStart","Qt::Key_L").toString()]);
+         _gameKeyNavigation->setButtonXKey(keymap[sets.value("GAMEPAD/buttonX","Qt::Key_H").toString()]);
+         _gameKeyNavigation->setButtonYKey(keymap[sets.value("GAMEPAD/buttonY","Qt::Key_B").toString()]);
+         _gameKeyNavigation->setButtonBKey(keymap[sets.value("GAMEPAD/buttonB","Qt::Key_M").toString()]);
 
          //unused gamepad buttons
          _gameKeyNavigation->setLeftKey(Qt::Key_unknown);
@@ -1645,7 +1618,7 @@ void MainWindow::LoadMapingKey()
 void MainWindow::UpdateKeyControlValue(bool bPress)
 {
     // ON KEYBOARD INPUT CHANGE INPUT VALUES BASED ON SONAR DISTANCE VALUE
-    // THESE VALUES SEEM WRONG - BUT WORK
+    // THESE VALUES SEEM WRONG - BUT WORK?
     keyControlValue_t keyControlValue_Up;
     keyControlValue_t keyControlValue_Down;
     QString strLable=SonarLabel->text();
@@ -1940,7 +1913,7 @@ void MainWindow::on_actionTakePhoto_triggered()
 {
     // TAKE SCREENSHOT PHOTO AND UPLOAD TO SFTP SERVER
 
-    // DISABLE PHOTO ICON FOR PHOTO DELAY SETTING (CONFIG FILE) SECONDS
+    // DISABLE PHOTO ICON FOR PHOTO DELAY SETTING SECONDS
     ui->actionTakePhoto->setDisabled(true);
     QTimer::singleShot(strPhotoDelay*1000, this,[&]()
     {
@@ -1951,7 +1924,7 @@ void MainWindow::on_actionTakePhoto_triggered()
     QScreen* scr=this->screen();
     QPixmap result = scr->grabWindow(this->winId());
 
-    // SAVE FILE LOCALLY USING PHOTO SETTINGS
+    // SAVE FILE LOCALLYS USING PHOTO SETTINGS
     QFileInfo info(strTakPhontoName);
     QString strTime=QDateTime::currentDateTime().toString("yyyyMMddHHmmss");
     QString strLocaTempFile="sftpfile/";
@@ -1974,4 +1947,3 @@ void MainWindow::on_actionTakePhoto_triggered()
 }
 
 	// HEY THIS WAS A HARD PROJECT TO LEARN TO CODE WITH - GIVE ME A BREAK
-	// adam@osibot.com
