@@ -105,7 +105,8 @@ private:
 
     int m_modeIndex; 
     uint IdleTime;                        //Changin Combobox to Button
-	bool	firstRun;                     // first run flag 2020/02/20
+	bool	firstRun;
+    bool robot_status_delay;                     // first run flag 2020/02/20
     //
     float WarnDistance = 1.0;
     float MinDistance = 0.5;

@@ -17,7 +17,7 @@ Item {
         anchors.fill: parent
         plugin: mapPlugin
         center: QtPositioning.coordinate(-31.16581,148.08496)
-        zoomLevel:7
+        zoomLevel:17
         property int defzoomLevel:7
         property int curzoomLevel:7
         property int maxzoomLevel:17

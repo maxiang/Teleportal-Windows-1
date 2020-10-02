@@ -221,6 +221,9 @@
    <property name="toolTip">
     <string>Robot Video</string>
    </property>
+   <property name="shortcut">
+    <string>V</string>
+   </property>
   </action>
   <action name="actionMenu">
    <property name="checkable">
@@ -232,6 +235,9 @@
    </property>
    <property name="text">
     <string>Menu</string>
+   </property>
+   <property name="shortcut">
+    <string>H</string>
    </property>
    <property name="toolTip">
     <string>Help</string>
@@ -247,6 +253,9 @@
    </property>
    <property name="text">
     <string>SonarGps</string>
+   </property>
+   <property name="shortcut">
+    <string>M</string>
    </property>
    <property name="toolTip">
     <string>Robot Location</string>

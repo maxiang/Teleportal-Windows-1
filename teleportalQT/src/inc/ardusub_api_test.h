@@ -217,8 +217,8 @@ typedef enum system_status_enum
 {
     SYS_UN_INIT = 0,
     SYS_INITIATING = 1,
-    SYS_DISARMED = 2,
-    SYS_ARMED = 3,
+    SYS_DISARMED = 5,
+    SYS_ARMED = 4,
 } system_status_t;
 
 typedef struct Debug_Info_Bite_s

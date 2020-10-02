@@ -140,10 +140,9 @@ void MainWindow::setupToolBars()
     connect(armCheckBox,SIGNAL(clicked(bool)),
                      this,SLOT(armCheckBox_stateChanged(bool)));
     UpdateMapTopLableText("NO CONNECTION TO ROBOT");
-    //AddToolBarSpacer(ui->tabsToolBar,100);
-    AddToolBarSpacer(ui->tabsToolBar);
+    AddToolBarSpacer(ui->tabsToolBar,100);
     QLabel *modeLable = new QLabel(this);
-    modeLable->setText("MODE: ");
+    modeLable->setText("DIVE MODE: ");
     modeLable->setStyleSheet("font: 87 10pt \"Arial Black\"");
     ui->tabsToolBar->addWidget(modeLable);
     modeComboBox = new QPushButton(this);
@@ -194,10 +193,10 @@ void MainWindow::setupToolBars()
     depthLabel->setStyleSheet("font: 87 10pt \"Arial Black\"");
 
     //HIDDEN VALUES
-    //yawLabelValue->setFixedWidth(50);
-    //pitchLabelValue->setFixedWidth(50);
-    //rollLabelValue->setFixedWidth(50);
-    //depthLabelValue->setFixedWidth(100);
+    yawLabelValue->setFixedWidth(50);
+    pitchLabelValue->setFixedWidth(50);
+    rollLabelValue->setFixedWidth(50);
+    depthLabelValue->setFixedWidth(100);
 
     AddToolBarSpacer(ui->statusToolBar);
     ui->statusToolBar->addWidget(SonarLabel);
@@ -211,7 +210,6 @@ void MainWindow::setupToolBars()
     ui->statusToolBar->addWidget(depthLabel);
     ui->statusToolBar->addWidget(depthLabelValue);
 
-	AddToolBarSpacer(ui->statusToolBar);
     QLabel *bannerLabel = new QLabel(this);								//ADD LOGO
     bannerLabel->setFixedWidth(145);
     bannerLabel->setFixedHeight(15);
@@ -231,7 +229,7 @@ void MainWindow::setupToolBars()
 
 void MainWindow::on_modeBt_clicked(){
 
-   	//WHEN USER CLICKS ON MODE BUTTON - CHANGE MODE
+   	//WHEN USER CLICKS ON DIVE MODE BUTTON - CHANGE MODE
     QKeyEvent* event=nullptr;
 
 		if (!armCheckBox->isChecked())		
@@ -239,15 +237,15 @@ void MainWindow::on_modeBt_clicked(){
             return;
          }
 
-	    if(modeComboBox->text()=="DEPTH HOLD")
+	    if(modeComboBox->text()=="Depth Hold")
 	    {
 	        event=new QKeyEvent(QEvent::KeyPress,Qt::Key_3, Qt::NoModifier);
 	    }
-	    else if(modeComboBox->text()=="STABILITY")
+	    else if(modeComboBox->text()=="Stability")
 	    {
 	        event=new QKeyEvent(QEvent::KeyPress,Qt::Key_2, Qt::NoModifier);
 	    }
-	    else if(modeComboBox->text()=="MANUAL")
+	    else if(modeComboBox->text()=="Manual")
 	    {
 	        event=new QKeyEvent(QEvent::KeyPress,Qt::Key_1, Qt::NoModifier);
 	    }
@@ -291,7 +289,7 @@ void MainWindow::updateVehicleData()
             //QGuiApplication::sendEvent(this,new QKeyEvent(QEvent::KeyPress,Qt::Key_B, Qt::NoModifier));
             m_modeIndex = 1;
             manual_control.buttons = 8;            		 // STABILITY MODE
-            modeComboBox->setText("STABILITY");
+            modeComboBox->setText("Stability");
 
             PlayMediaFileMapText("reconnect");			//PLAY WELCOME BACK MP3
     }
@@ -366,7 +364,7 @@ void MainWindow::updateVehicleData()
             PlayMediaFileMapText("timeout");
         }
 
-    //UPDATE MODE LABEL    
+    //UPDATE DIVE MODE LABEL    
     CheckRollOrPitchChang(false);
     UpdateModeLable();
 }
@@ -457,6 +455,7 @@ void MainWindow::keyPressEvent(QKeyEvent *event)
         {
             armCheckBox->setChecked(true);
             armCheckBox_stateChanged(true);
+            return;
          }
 
         // SEND COMMAND TO ROBOT
@@ -474,9 +473,10 @@ void MainWindow::keyPressEvent(QKeyEvent *event)
         {
             armCheckBox->setChecked(true);
             armCheckBox_stateChanged(true);
+            return;
          }
 
-        qDebug() << "You Pressed Key S - Down";
+        qDebug() << "You Pressed Key S";
         UpdateKeyControlValue();
 
         // IF PROXIMITY ALERT THEN DONT SEND COMMAND
@@ -496,13 +496,14 @@ void MainWindow::keyPressEvent(QKeyEvent *event)
         {
             armCheckBox->setChecked(true);
             armCheckBox_stateChanged(true);
+            return;
          }
 
         qDebug() << "You Pressed Key A";
         UpdateKeyControlValue();
         pressedKey.A = true;
 
-         //CHECK MODE OF ROBOT AND GIVE CORRECT INPUT BASED ON MODE - MANUAL MODE VERY FAST
+        // CHECK MODE OF ROBOT AND GIVE CORRECT INPUT BASED ON MODE - MANUAL MODE VERY FAST
         if (m_modeIndex == 0)			
         {
             manual_control.r = keyControlValue.turnLeftM;
@@ -525,6 +526,7 @@ void MainWindow::keyPressEvent(QKeyEvent *event)
         {
             armCheckBox->setChecked(true);
             armCheckBox_stateChanged(true);
+            return;
          }
 
         qDebug() << "You Pressed Key D";
@@ -554,17 +556,19 @@ void MainWindow::keyPressEvent(QKeyEvent *event)
         {
             armCheckBox->setChecked(true);
             armCheckBox_stateChanged(true);
+            return;
          }
 
+        qDebug() << "You Pressed Key Up";
+        UpdateKeyControlValue();
+
         // IF PROXIMITY ALERT THEN DONT SEND COMMAND
-        else if(!SonarAlarm)
+        if(!SonarAlarm)
         {
             // SEND COMMAND TO ROBOT
             pressedKey.Up = true;
-            UpdateKeyControlValue();
             manual_control.x = keyControlValue.forward;
         }
-         qDebug() << "You Pressed Key Up";
     }
 
     // KEY DOWN - MOVE ROBOT BACKWARD
@@ -575,6 +579,7 @@ void MainWindow::keyPressEvent(QKeyEvent *event)
         {
             armCheckBox->setChecked(true);
             armCheckBox_stateChanged(true);
+            return;
          }
 
         qDebug() << "You Pressed Key Down";
@@ -593,6 +598,7 @@ void MainWindow::keyPressEvent(QKeyEvent *event)
         {
             armCheckBox->setChecked(true);
             armCheckBox_stateChanged(true);
+            return;
          }
 
         qDebug() << "You Pressed Key Left";
@@ -611,6 +617,7 @@ void MainWindow::keyPressEvent(QKeyEvent *event)
         {
             armCheckBox->setChecked(true);
             armCheckBox_stateChanged(true);
+            return;
          }
 
         qDebug() << "You Pressed Key Right";
@@ -629,6 +636,7 @@ void MainWindow::keyPressEvent(QKeyEvent *event)
         {
             armCheckBox->setChecked(true);
             armCheckBox_stateChanged(true);
+            return;
          }
 
          qDebug() << "You Pressed Key R";
@@ -646,6 +654,7 @@ void MainWindow::keyPressEvent(QKeyEvent *event)
         {
             armCheckBox->setChecked(true);
             armCheckBox_stateChanged(true);
+            return;
          }
 
          qDebug() << "You Pressed Key F";
@@ -662,6 +671,7 @@ void MainWindow::keyPressEvent(QKeyEvent *event)
         {
             armCheckBox->setChecked(true);
             armCheckBox_stateChanged(true);
+            return;
          }
          qDebug() << "You Pressed Key T";
          UpdateKeyControlValue();
@@ -678,6 +688,7 @@ void MainWindow::keyPressEvent(QKeyEvent *event)
         {
             armCheckBox->setChecked(true);
             armCheckBox_stateChanged(true);
+            return;
          }
 
          qDebug() << "You Pressed Key G";
@@ -691,43 +702,34 @@ void MainWindow::keyPressEvent(QKeyEvent *event)
       // KEY 1 - STABILITY MODE
       else if (event->key() == Qt::Key_1)
      {
-         if (armCheckBox->isChecked())
-         {
-         	qDebug() << "You Pressed Key 1 - STABILITY MODE";
-         	UpdateKeyControlValue();
-         	m_modeIndex = 1;
-         	manual_control.buttons = 8;
-         	modeComboBox->setText("STABILITY");
-         	PlayMediaFileMapText("stability");
-         }
+         qDebug() << "You Pressed Key 1 - STABILITY MODE";
+         UpdateKeyControlValue();
+         m_modeIndex = 1;
+         manual_control.buttons = 8;
+         modeComboBox->setText("Stability");
+         PlayMediaFileMapText("stability");
      }
    
    // KEY 2 - DEPTH HOLD MODE
    else if (event->key() == Qt::Key_2)
      {
-     	 if (armCheckBox->isChecked())
-         {
-         	qDebug() << "You Pressed Key 2 - DEPTH HOLD MODE";
-         	UpdateKeyControlValue();
-         	m_modeIndex = 2;
-         	manual_control.buttons = 4;
-         	modeComboBox->setText("DEPTH HOLD");
-         	PlayMediaFileMapText("depth");
-     	}
+         qDebug() << "You Pressed Key 2 - DEPTH HOLD MODE";
+         UpdateKeyControlValue();
+         m_modeIndex = 2;
+         manual_control.buttons = 4;
+         modeComboBox->setText("Depth Hold");
+         PlayMediaFileMapText("depth");
      }
      
      // KEY 3 - MANUAL MODE
      else if (event->key() == Qt::Key_3)
      {
-         if (armCheckBox->isChecked())
-         {
-         	qDebug() << "You Pressed Key 3 - MANUAL MODE";
-         	UpdateKeyControlValue();
-         	m_modeIndex = 0;
-         	manual_control.buttons = 2;
-         	modeComboBox->setText("MANUAL");
-         	PlayMediaFileMapText("manual");
-     	}
+         qDebug() << "You Pressed Key 3 - MANUAL MODE";
+         UpdateKeyControlValue();
+         m_modeIndex = 0;
+         manual_control.buttons = 2;
+         modeComboBox->setText("Manual");
+         PlayMediaFileMapText("manual");
      }
 
      // KEY 4 - DISARM ROBOT
@@ -755,7 +757,6 @@ void MainWindow::keyPressEvent(QKeyEvent *event)
                                     "color: rgb(255, 255, 255);"
                                     "font: 87 12pt \"Arial Black\";");
          armCheckBox->setText("CLICK TO START - ROBOT DISARMED");
-         armCheckBox->setChecked(false);
          UpdateMapTopLableText("");
          PlayMediaFileMapText("disarm");
          qDebug() << "DISARM";
@@ -779,7 +780,6 @@ void MainWindow::keyPressEvent(QKeyEvent *event)
                                     "color: rgb(255, 255, 255);"
                                     "font: 87 12pt \"Arial Black\";");
          armCheckBox->setText("ROBOT ARMED");
-         armCheckBox->setChecked(true);
          UpdateMapTopLableText("");
          PlayMediaFileMapText("arm");
          qDebug() << "ARM";
@@ -1025,17 +1025,17 @@ void MainWindow::modeComboBox_currentIndexChanged(int index)
     {
     case 0:
         manual_control.buttons = 2;
-        modeComboBox->setText("MANUAL");
+        modeComboBox->setText("Manual");
         break;
 
     case 1:
         manual_control.buttons = 8;
-        modeComboBox->setText("STABILITY");
+        modeComboBox->setText("Stability");
         break;
 
     case 2:
         manual_control.buttons = 4;
-        modeComboBox->setText("DEPTH HOLD");
+        modeComboBox->setText("Depth Hold");
         break;
 
     default:
@@ -1133,8 +1133,7 @@ void MainWindow::on_updateConfidence()
     // UPDATE SONAR VALUES DISTANCE AND CONFIDENCE - ALSO UPDATE WARNING AND DANGER
     float fDistance=pingLink->getDistance()/1000.0;
     float fConfidence=pingLink->getConfidence();
-    //QString strValue=QString("%1 M (%2\%)   ").arg(fDistance = floor(100*fDistance) / 100).arg(fConfidence);    //LIMIT DISTANCE TO 0.00 ("%.3lf",fDistance)
-    QString strValue=QString("%1 M (%2\%)   ").arg(round(fDistance * 100) / 100.0).arg(fConfidence);
+    QString strValue=QString("%1 M (%2\%)   ").arg(fDistance).arg(fConfidence);
     SonarlValue->setText(strValue);
 
     // IF SONAR CONFIDENCE VALUE IS LESS THAN CONFIDENCE SETTING THEN OUTPUT FALSE - IGNORE SONAR DISTANCE VALUES
@@ -1214,7 +1213,7 @@ void MainWindow::on_statusChanged(QQuickWidget::Status status)
 void MainWindow::on_mainStackedWidget_currentChanged(int arg1)
 {
  /*
-    // AUTO MAP ZOOM FEATURE
+    // MAP STUFF?
     if(qmlTimer)
     {
         if(arg1==2)
@@ -1516,17 +1515,17 @@ void MainWindow::UpdateModeLable()
     {
         if(vehicle_data->custom_mode==AS::ALT_HOLD)
         {
-             modeComboBox->setText("DEPTH HOLD");
+             modeComboBox->setText("Depth Hold");
              m_modeIndex = 2;
         }
         else if(vehicle_data->custom_mode==AS::MANUAL)
         {
-            modeComboBox->setText("MANUAL");
+            modeComboBox->setText("Manual");
             m_modeIndex = 0;
         }
         else if(vehicle_data->custom_mode==AS::STABILIZE)
         {
-            modeComboBox->setText("STABILITY");
+            modeComboBox->setText("Stability");
             m_modeIndex = 1;
         }
         
