@@ -130,10 +130,10 @@ void PingSensor::request(int id)
 
 void PingSensor::handleMessage(const ping_message &msg)
 {
-    qDebug()<< QStringLiteral("Handling Message: %1 [%2]")
-                                       .arg(PingHelper::nameFromMessageId(
-                                           static_cast<PingEnumNamespace::PingMessageId>(msg.message_id())))
-                                       .arg(msg.message_id());
+    //qDebug()<< QStringLiteral("Handling Message: %1 [%2]")
+    //                                   .arg(PingHelper::nameFromMessageId(
+    //                                     static_cast<PingEnumNamespace::PingMessageId>(msg.message_id())))
+    //                                  .arg(msg.message_id());
 
     auto& requestedId = requestedIds[msg.message_id()];
     if (requestedId.waiting) {
@@ -226,7 +226,7 @@ void PingSensor::handleMessage(const ping_message &msg)
     }
 
     default:
-        qDebug()<< "UNHANDLED MESSAGE ID:" << msg.message_id();
+        //qDebug()<< "UNHANDLED MESSAGE ID:" << msg.message_id();
         break;
     }
 

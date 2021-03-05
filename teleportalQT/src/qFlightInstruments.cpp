@@ -533,7 +533,8 @@ void QCompass::paintEvent(QPaintEvent *)
         //diraw yawLableCompass 20200621
         sprintf(buf, "%d DEG", (int)m_yaw);
         s = buf;
-        painter.drawText(QRectF(fx, fy+h/4, w, h/2), Qt::AlignCenter, s);
+        //painter.drawText(QRectF(fx, fy+h/4, w, h/2), Qt::AlignCenter, s);
+        painter.drawText(QRectF(fx, fy, w, h/1), Qt::AlignCenter, s);
     }
 }
 

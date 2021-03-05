@@ -13,6 +13,7 @@
 // THIS APP HAS GAMEPAD SUPPORT BUT IS NOT CURRENTLY BEING USED
 // THIS APP HAS BASIC COLLISON AI
 // THIS APP HAS A CONFIGURATION FILE teleportal.ini
+// THIS APP HAS A LOGFILE FILE 
 
 
 
@@ -64,6 +65,7 @@ MainWindow::MainWindow(QWidget *parent)		//START APPLICATION
     m_modeIndex = 1;
     IdleTime = 1;
     firstRun = false;
+    bdepthhold=false;
 
     // DISPLAY VIDEO AND LOAD TOOLBAR
     on_actionVideo_triggered();
@@ -81,6 +83,8 @@ MainWindow::MainWindow(QWidget *parent)		//START APPLICATION
     std::string ip("192.168.2.");
     AS::as_api_init(ip.c_str(), F_THREAD_ALL);
     bas_init_status=true;
+    qDebug() << "ROBOT INITILIZED (86)";
+
 
     // SETUP MAIN LOOP
     connect(this,SIGNAL(SetQMLText()),this,SLOT(on_setQmlText()));
@@ -105,9 +109,11 @@ MainWindow::MainWindow(QWidget *parent)		//START APPLICATION
 MainWindow::~MainWindow()
 {
     //ON SHUTDOWN DISARM ROBOT
+    qDebug() << "Program Attempting To Exited";
     armCheckBox->setChecked(false);
     armCheckBox_stateChanged(Qt::Unchecked);
     delete ui;
+    qDebug() << "Program Exited Successfully?";
 }
 
 
@@ -245,8 +251,17 @@ void MainWindow::on_modeBt_clicked(){
 	    }
 	    else if(modeComboBox->text()=="STABILITY")
 	    {
-	        event=new QKeyEvent(QEvent::KeyPress,Qt::Key_2, Qt::NoModifier);
+	        // IF DEPTH HOLD MODE IS ENABLED USE IT
+	    	if (bdepthhold)
+	    	{
+	        	event=new QKeyEvent(QEvent::KeyPress,Qt::Key_2, Qt::NoModifier);
+			}
+			if (!bdepthhold)
+			{
+				event=new QKeyEvent(QEvent::KeyPress,Qt::Key_3, Qt::NoModifier);
+			}	    
 	    }
+
 	    else if(modeComboBox->text()=="MANUAL")
 	    {
 	        event=new QKeyEvent(QEvent::KeyPress,Qt::Key_1, Qt::NoModifier);
@@ -273,17 +288,19 @@ void MainWindow::setupTimer()
 
 void MainWindow::updateVehicleData()
 {
-    //UPDATES ROBOT VARIABLES & MAIN TIMING LOOP
+    // UPDATES ROBOT VARIABLES & MAIN TIMING LOOP
 
     if (!AS::as_api_check_vehicle(currentVehicle))
     {
         // IF ROBOT IS NOT CONNECTED RETURN
+        qDebug() << "Robot is not connected (296)";
         return;
     }
 
     if (!firstRun)
     {
         // SEND COMMANDS TO ROBOT ON STARTUP (DISARM, STABILITY MODE)
+        	qDebug() << "Attempting first connection to Robot";
             armCheckBox->setChecked(false);				// DISARM ROBOT
             armCheckBox_stateChanged(true);
             firstRun = true;
@@ -299,6 +316,7 @@ void MainWindow::updateVehicleData()
     if (vehicle_data == nullptr)
     {
         // IF ROBOT IS NOT CONNECTED RETURN
+        qDebug() << "Robot is not connected (319)";
         return;
     }
 
@@ -360,6 +378,7 @@ void MainWindow::updateVehicleData()
             armCheckBox->setChecked(false);
             armCheckBox_stateChanged(Qt::Unchecked);
             PlayMediaFileMapText("timeout");
+            qDebug() << "No Human Detected - Disarming Robot (381)";
         }
 
     //UPDATE MODE LABEL    
@@ -430,6 +449,7 @@ void MainWindow::resizeEvent(QResizeEvent *event)
 {
     resizeWindowsManual();
     QMainWindow::resizeEvent(event);
+    qDebug() << "Application was resized (452)";
 }
 
 
@@ -446,6 +466,7 @@ void MainWindow::keyPressEvent(QKeyEvent *event)
     if (event->key() == Qt::Key_W)
     {
         // CHECK IF ROBOT IS ARMED, IF NOT REARM ROBOT
+        
         if (!armCheckBox->isChecked())		
         {
             armCheckBox->setChecked(true);
@@ -453,10 +474,10 @@ void MainWindow::keyPressEvent(QKeyEvent *event)
          }
 
         // SEND COMMAND TO ROBOT
-        qDebug() << "You Pressed Key W";
         UpdateKeyControlValue();
         pressedKey.W = true;
-        manual_control.z = keyControlValue.upward;		
+        manual_control.z = keyControlValue.upward;	
+        qDebug() << "You Pressed Key W - Up";
     }
 
     // KEY S - DOWN
@@ -469,15 +490,14 @@ void MainWindow::keyPressEvent(QKeyEvent *event)
             armCheckBox_stateChanged(true);
          }
 
-        qDebug() << "You Pressed Key S - Down";
-        UpdateKeyControlValue();
-
         // IF PROXIMITY ALERT THEN DONT SEND COMMAND
         if(!SonarAlarm)					
         {
             // SEND COMMAND TO ROBOT
+            UpdateKeyControlValue();
             pressedKey.S = true;
-            manual_control.z = keyControlValue.downward;		
+            manual_control.z = keyControlValue.downward;
+            qDebug() << "You Pressed Key S - Down";		
         }
     }
 
@@ -556,8 +576,9 @@ void MainWindow::keyPressEvent(QKeyEvent *event)
             pressedKey.Up = true;
             UpdateKeyControlValue();
             manual_control.x = keyControlValue.forward;
+            qDebug() << "You Pressed Key Up";
         }
-         qDebug() << "You Pressed Key Up";
+         
     }
 
     // KEY DOWN - MOVE ROBOT BACKWARD
@@ -700,12 +721,15 @@ void MainWindow::keyPressEvent(QKeyEvent *event)
      {
      	 if (armCheckBox->isChecked())
          {
-         	qDebug() << "You Pressed Key 2 - DEPTH HOLD MODE";
-         	UpdateKeyControlValue();
-         	m_modeIndex = 2;
-         	manual_control.buttons = 4;
-         	modeComboBox->setText("DEPTH HOLD");
-         	PlayMediaFileMapText("depth");
+         	if (bdepthhold)
+         	{	
+         		UpdateKeyControlValue();
+         		m_modeIndex = 2;
+         		manual_control.buttons = 4;
+         		modeComboBox->setText("DEPTH HOLD");
+         		PlayMediaFileMapText("depth");
+         		qDebug() << "You Pressed Key 2 - DEPTH HOLD MODE";
+         	}
      	}
      }
      
@@ -751,7 +775,7 @@ void MainWindow::keyPressEvent(QKeyEvent *event)
          armCheckBox->setChecked(false);
          UpdateMapTopLableText("");
          PlayMediaFileMapText("disarm");
-         qDebug() << "DISARM";
+         qDebug() << "ROBOT DISARMED";
      }
 
      // KEY 5 - ARM ROBOT
@@ -775,7 +799,7 @@ void MainWindow::keyPressEvent(QKeyEvent *event)
          armCheckBox->setChecked(true);
          UpdateMapTopLableText("");
          PlayMediaFileMapText("arm");
-         qDebug() << "ARM";
+         qDebug() << "ROBOT ARMED";
          
      }
      
@@ -813,14 +837,14 @@ void MainWindow::keyPressEvent(QKeyEvent *event)
 
     else
     {
-        qDebug() << "You Pressed NOT supported Key";
+        //qDebug() << "You Pressed NOT supported Key";
     }
 
     // OUTPUT VALUE TO DEBUG
-    qDebug() << "x: " << manual_control.x;
-    qDebug() << "y: " << manual_control.y;
-    qDebug() << "z: " << manual_control.z;
-    qDebug() << "r: " << manual_control.r;
+    // qDebug() << "x: " << manual_control.x;
+    // qDebug() << "y: " << manual_control.y;
+    // qDebug() << "z: " << manual_control.z;
+    // qDebug() << "r: " << manual_control.r;
 }
 
 
@@ -831,6 +855,7 @@ void MainWindow::keyReleaseEvent(QKeyEvent *event)
     if (event->isAutoRepeat())
     {
          // IF THE KEY RELEASES TO MANY TIMES? I HAVE NO IDEA WHY THIS IS HERE.
+    	//qDebug() << "Key Auto Repeat Error (858)";
         return;
     }
 
@@ -1000,14 +1025,14 @@ void MainWindow::keyReleaseEvent(QKeyEvent *event)
     
     else
     {
-        qDebug() << "You Released NOT supported Key";
+        //qDebug() << "You Released NOT supported Key";
     }
 
     // SEND UPDATED INPUT VALUES TO DEBUG
-    qDebug() << "x: " << manual_control.x;
-    qDebug() << "y: " << manual_control.y;
-    qDebug() << "z: " << manual_control.z;
-    qDebug() << "r: " << manual_control.r;
+    //qDebug() << "x: " << manual_control.x;
+    //qDebug() << "y: " << manual_control.y;
+    //qDebug() << "z: " << manual_control.z;
+    //qDebug() << "r: " << manual_control.r;
 }
 
 
@@ -1020,6 +1045,7 @@ void MainWindow::on_actionVideo_triggered()
     ui->actionMenu->setDisabled(false);
     ui->actionSonarGps->setChecked(false);
     ui->actionSonarGps->setDisabled(false);
+    qDebug() << "VIDEO PAGE DISPLAYED (1048)";
 }
 
 
@@ -1032,6 +1058,7 @@ void MainWindow::on_actionMenu_triggered()
     ui->actionVideo->setDisabled(false);
     ui->actionSonarGps->setChecked(false);
     ui->actionSonarGps->setDisabled(false);
+    qDebug() << "HELP PAGE DISPLAYED (1061)";
 }
 
 
@@ -1052,16 +1079,26 @@ void MainWindow::modeComboBox_currentIndexChanged(int index)
     case 0:
         manual_control.buttons = 2;
         modeComboBox->setText("MANUAL");
+
         break;
 
     case 1:
         manual_control.buttons = 8;
         modeComboBox->setText("STABILITY");
+        qDebug() << "Stability Mode? (1088)";
         break;
 
     case 2:
-        manual_control.buttons = 4;
-        modeComboBox->setText("DEPTH HOLD");
+    	if(bdepthhold)
+    	{
+    		manual_control.buttons = 4;
+        	modeComboBox->setText("DEPTH HOLD");
+        }
+        if(!bdepthhold)
+    	{
+    		manual_control.buttons = 2;
+        	modeComboBox->setText("MANUAL");
+        }
         break;
 
     default:
@@ -1111,7 +1148,7 @@ void MainWindow::armCheckBox_stateChanged(bool checked)
         armCheckBox->setText("ROBOT ARMED");
         UpdateMapTopLableText("");
         PlayMediaFileMapText("arm");
-        qDebug() << "ARM";
+        qDebug() << "ROBOT ARMED (1151)";
     }
     else
     {
@@ -1136,7 +1173,7 @@ void MainWindow::armCheckBox_stateChanged(bool checked)
         armCheckBox->setText("CLICK TO START - ROBOT DISARMED");
         UpdateMapTopLableText("");
         PlayMediaFileMapText("disarm");
-        qDebug() << "DISARM";
+        qDebug() << "DISARMING ROBOT (1176)";
     }
 }
 
@@ -1153,6 +1190,7 @@ void MainWindow::on_actionSonarGps_triggered()
     ui->actionMenu->setDisabled(false);
     ui->actionVideo->setChecked(false);
     ui->actionVideo->setDisabled(false);
+    qDebug() << "DISPLAY MAP PAGE (1193)";
 }
 
 
@@ -1198,6 +1236,7 @@ void MainWindow::on_updateConfidence()
         strLabelName="DANGER SONAR: ";
         strNormalsty="color: rgb(255, 0, 0);";
         mapTopLableText="PROXIMITY ALARM";
+        qDebug() << "PROXIMITY ALARM (1239)";
 
         // RESET ALL ROBOT INPUT VALUES TO ZERO - HALT ROBOT INPUT
         manual_control.x = 0;
@@ -1214,6 +1253,7 @@ void MainWindow::on_updateConfidence()
             PrevTime=tcurrent;
             mapTopLableText="OBSTACLE AVOIDANCE ENGAGED - DISARMING ROBOT";
             PlayMediaFileMapText("collision");
+            qDebug() << "OBSTACLE AVOIDANCE ENGAGED - DISARMING ROBOT";
         }
     }
 
@@ -1271,12 +1311,15 @@ void MainWindow::CheckRollOrPitchChang(bool bTimerOut)
 
         // START TIMER
         rollLPitchCheckTimer.start();
+        
+
     }
     else
     {
         if(bTimerOut)
         {
             // RESTART CONNECTION
+
             RestartNetWork();
         }
     }
@@ -1288,9 +1331,11 @@ void MainWindow::RestartNetWork()
     // RESTART THE CONNECTION TO ROBOT
 
 	// STOP ALL TIMERS
+	qDebug() << "TRYING TO RECONNECT TO ROBOT AFTER TIMEOUT (1334)";
     rollLPitchCheckTimer.stop();
     vehicleDataUpdateTimer.stop();
     manualControlTimer.stop();
+    qDebug() << "STOPPED ALL TIMERS (1338)";
 
     // RESET TO STARTING VALUES
     currentVehicle=1;
@@ -1300,16 +1345,19 @@ void MainWindow::RestartNetWork()
     armCheckBox->setChecked(false);
     armCheckBox_stateChanged(Qt::Unchecked);
     AS::as_api_deinit();
+    qDebug() << "DEINITIALIZED ROBOT CONNECTION (1348)";
 
     // RECONNECT TO THE ROBOT
     std::string ip("192.168.2.");
     AS::as_api_init(ip.c_str(), F_THREAD_ALL);
+    qDebug() << "RETRYING ROBOT CONNECTION AGAIN (1353)";
 
     // RECONNECT TO PING SONAR AND RESTART TIMERS
     pingLink->connectLink();
     rollLPitchCheckTimer.start();
     vehicleDataUpdateTimer.start();
     manualControlTimer.start();
+    qDebug() << "RESTARTED TIMERS (1360)";
 }
 
 
@@ -1323,6 +1371,9 @@ void MainWindow::LoadInIConfig()
         sets.setValue("GPS/MapCoordinates",QStringList{"-14.0094983494893","80.1233232234234"});
         sets.setValue("GPS/MarkerCoordinates",QStringList{"-14.0094983494893","80.1233232234234"});
         sets.setValue("GPS/ardusubCoordinates",false);
+
+        // DEPTH_HOLD MODE ENABLED
+        //sets.setValue("DEPTH_HOLD/enabled",false);
 
         // KEYBOARD COMMAND PRESS
         sets.setValue("KEYBOARD_KEYPRESS/forward",500);
@@ -1423,10 +1474,15 @@ void MainWindow::LoadInIConfig()
         sets.setValue("MISC/PhotoDelay",5);
     }
 
+    // HERE WE TRANSFER TELEPORTAL.INI TO VARIABLES IN APP
+
     // GPS SETTINGS
     fMapCoordinates=sets.value("GPS/MapCoordinates",QStringList{"-14.0094983494893","80.1233232234234"}).toStringList();
     fMarkerCoordinates=sets.value("GPS/MarkerCoordinates",QStringList{"-14.0094983494893","80.1233232234234"}).toStringList();
     bardusubCoordinates=sets.value("GPS/ardusubCoordinates").toBool();
+
+	// DEPTH_HOLD MODE ENABLED
+    //bdepthhold=sets.setValue("DEPTH_HOLD/enabled").toBool();
 
     // KEYBOARD CONTROL SETTINGS
     keyControlValue_Press.forward=sets.value("KEYBOARD_KEYPRESS/forward").toInt();
@@ -1512,6 +1568,7 @@ void MainWindow::LoadInIConfig()
     strUser=sets.value("MISC/user").toString();
     strPass=sets.value("MISC/pass").toString();
     strPhotoDelay=sets.value("MISC/PhotoDelay").toInt();
+    qDebug() << "LOADED CONFIG FILE (1571)";
 }
 
 
@@ -1582,8 +1639,8 @@ void MainWindow::UpdateModeLable()
          				}
     			});
         }
-        qDebug() << "dive mode: " << vehicle_data->custom_mode;
-    	qDebug() << "arm status: " << vehicle_data->system_status;
+        //qDebug() << "dive mode: " << vehicle_data->custom_mode;
+    	//qDebug() << "arm status: " << vehicle_data->system_status;
     }
 }
 
@@ -1941,6 +1998,7 @@ void MainWindow::on_actionTakePhoto_triggered()
     // TAKE SCREENSHOT PHOTO AND UPLOAD TO SFTP SERVER
 
     // DISABLE PHOTO ICON FOR PHOTO DELAY SETTING (CONFIG FILE) SECONDS
+    qDebug() << "TAKING A PHOTO (2001)";
     ui->actionTakePhoto->setDisabled(true);
     QTimer::singleShot(strPhotoDelay*1000, this,[&]()
     {
@@ -1971,7 +2029,8 @@ void MainWindow::on_actionTakePhoto_triggered()
 
     });
     sftp.upload(strLocaTempFile,strRemoteDir,strHost,strUser,strPass);
+    qDebug() << "PHOTO UPLOADED (2032)";
 }
 
-	// HEY THIS WAS A HARD PROJECT TO LEARN TO CODE WITH - GIVE ME A BREAK
+	// HEY THIS WAS A HARD PROJECT TO LEARN TO CODE WITH QT & C++ FOR FIRST TIME - GIVE ME A BREAK
 	// adam@osibot.com

@@ -138,6 +138,7 @@ private:
     int             strPhotoDelay;
     bool            bsftpIdle;
     QTime           tLastUpLoad;
+    bool            bdepthhold;
 
     typedef struct
     {

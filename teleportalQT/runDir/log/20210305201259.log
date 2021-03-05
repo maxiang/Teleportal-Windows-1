@@ -1,0 +1,16 @@
+2021-03-05 20:12:59 QtWarningMsg:FILE: LINE:0 MSG:QMetaObject::connectSlotsByName: No matching signal for on_modeBt_clicked()
+2021-03-05 20:12:59 QtDebugMsg:FILE:..\teleportalQT\src\mainwindow.cpp LINE:1048 MSG:VIDEO PAGE DISPLAYED (1048)
+2021-03-05 20:12:59 QtDebugMsg:FILE:..\teleportalQT\src\mainwindow.cpp LINE:1571 MSG:LOADED CONFIG FILE (1571)
+2021-03-05 20:12:59 QtDebugMsg:FILE:..\teleportalQT\src\mainwindow.cpp LINE:86 MSG:ROBOT INITILIZED (86)
+2021-03-05 20:12:59 QtDebugMsg:FILE:..\teleportalQT\src\pingsensor.cpp LINE:63 MSG:Connecting to "LinkConfiguration{Name: Ping1D, Sensor: Ping1D, LinkType: UDP, Arguments: (192.168.2.2:9090)}"
+2021-03-05 20:12:59 QtDebugMsg:FILE:..\teleportalQT\dependencies\link\udplink.cpp LINE:35 MSG:"LinkConfiguration{Name: Ping1D, Sensor: Ping1D, LinkType: UDP, Arguments: (192.168.2.2:9090)}"
+2021-03-05 20:12:59 QtDebugMsg:FILE:..\teleportalQT\src\pingsensor.cpp LINE:254 MSG:Start pre configuration task and requests.
+2021-03-05 20:12:59 QtDebugMsg:FILE:..\teleportalQT\src\pingsensor.cpp LINE:254 MSG:Start pre configuration task and requests.
+2021-03-05 20:12:59 QtDebugMsg:FILE:..\teleportalQT\src\mainwindow.cpp LINE:452 MSG:Application was resized (452)
+2021-03-05 20:13:01 QtDebugMsg:FILE:..\teleportalQT\src\VideoReceiver.cpp LINE:422 MSG:State changed, _playing: true
+2021-03-05 20:13:01 QtDebugMsg:FILE:..\teleportalQT\src\mainwindow.cpp LINE:452 MSG:Application was resized (452)
+2021-03-05 20:13:01 QtDebugMsg:FILE:..\teleportalQT\src\mainwindow.cpp LINE:303 MSG:Attempting first connection to Robot
+2021-03-05 20:13:01 QtDebugMsg:FILE:..\teleportalQT\src\mainwindow.cpp LINE:1176 MSG:DISARMING ROBOT (1176)
+2021-03-05 20:13:17 QtDebugMsg:FILE:..\teleportalQT\src\mainwindow.cpp LINE:112 MSG:Program Attempting To Exited
+2021-03-05 20:13:17 QtDebugMsg:FILE:..\teleportalQT\src\mainwindow.cpp LINE:1176 MSG:DISARMING ROBOT (1176)
+2021-03-05 20:13:17 QtDebugMsg:FILE:..\teleportalQT\src\mainwindow.cpp LINE:116 MSG:Program Exited Successfully?
