@@ -1149,8 +1149,9 @@ void MainWindow::armCheckBox_stateChanged(bool checked)
         UpdateMapTopLableText("");
         PlayMediaFileMapText("arm");
         qDebug() << "ROBOT ARMED (1151)";
+        return;
     }
-    else
+    if (!armCheckBox->isChecked())
     {
     	// CHANGE ALL ROBOT INPUT VALUES TO ZERO BEFORE DISARMING
         manual_control.x = 0;
@@ -1174,6 +1175,7 @@ void MainWindow::armCheckBox_stateChanged(bool checked)
         UpdateMapTopLableText("");
         PlayMediaFileMapText("disarm");
         qDebug() << "DISARMING ROBOT (1176)";
+        return;
     }
 }
 

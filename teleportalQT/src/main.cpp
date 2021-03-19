@@ -64,6 +64,10 @@ int main(int argc, char *argv[])
     dir.mkdir("log");
     QString strTime=QDateTime::currentDateTime().toString("yyyyMMddHHmmss");
     QString strLocaLogFile="log/";
+	//QString strLocaLogFile="%USERPROFILE%/Documents/Teleportal/";
+	//QString strLocaLogFile=QDir::homePath();
+	//QString strLocaLogFile=QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
+	
     strLocaLogFile+=strTime;
     strLocaLogFile+=".log";
     g_LogFile=strLocaLogFile;

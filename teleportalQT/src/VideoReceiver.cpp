@@ -74,6 +74,12 @@ void VideoReceiver::start(QQuickWidget *quickWidget)
     }
 
     GstElement *src = gst_element_factory_make("udpsrc", "udpsrc");
+
+    //Adam attempt at fixing video
+    GstElement *jitterbuffer = gst_element_factory_make("rtpjitterbuffer", nullptr);
+    
+
+
     GstElement *demux = gst_element_factory_make("rtph264depay", "rtp-h264-depacketizer");
     GstElement *parser = gst_element_factory_make("h264parse", "h264-parser");
     GstElement *queue = gst_element_factory_make("queue", "queue-recording-main");
@@ -86,7 +92,11 @@ void VideoReceiver::start(QQuickWidget *quickWidget)
     /* the plugin must be loaded before loading the qml file to register the
      * GstGLVideoItem qml item */
     
-    g_assert(src && demux && parser && queue && decoder && videoflip &&
+    //g_assert(src && demux && parser && queue && decoder && videoflip &&
+    //         queue2 && glupload && glcolorconvert && qmlsink);
+
+    //Adam attempt at fixing video
+    g_assert(src && jitterbuffer && demux && parser && queue && decoder && videoflip &&
              queue2 && glupload && glcolorconvert && qmlsink);
 
     GstCaps *caps = nullptr;
@@ -105,10 +115,10 @@ void VideoReceiver::start(QQuickWidget *quickWidget)
     }
 
 
-    gst_bin_add_many(GST_BIN(_pipeline), src, demux, parser, _teeRecording, queue, decoder,
+    gst_bin_add_many(GST_BIN(_pipeline), src, jitterbuffer, demux, parser, _teeRecording, queue, decoder,
                      videoflip, glupload, glcolorconvert, qmlsink,
                      nullptr);
-    if (!gst_element_link_many(src, demux, parser, _teeRecording, queue, decoder,
+    if (!gst_element_link_many(src, jitterbuffer, demux, parser, _teeRecording, queue, decoder,
                                videoflip, glupload, glcolorconvert, qmlsink,
                                nullptr))
     {
