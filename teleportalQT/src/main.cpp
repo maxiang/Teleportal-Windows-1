@@ -7,6 +7,12 @@
 #include <QtMsgHandler>
 #include <QMessageLogContext>
 #include <QString>
+
+//Add crash dump file
+#include <windows.h>
+#include <dbghelp.h>
+#include <QDir>
+
 #define MAX_LOG_SIZE 1024*1024*10       //10M
 QString  g_LogFile;
 void OutDebugInfoTofile()
@@ -55,6 +61,44 @@ void OutDebugInfoTofile()
  //#endif
 }
 
+//Add crash dump file
+long ApplicationCrashHandler(EXCEPTION_POINTERS *pException){
+
+
+        QDir *dmp = new QDir;
+        QString ExceptDmpPath = QCoreApplication::applicationDirPath()+"/ExceptDmp/";
+        bool exist = dmp->exists(ExceptDmpPath);
+        if(exist == false)
+            dmp->mkdir(ExceptDmpPath);
+
+        QDateTime current_date_time = QDateTime::currentDateTime();
+        QString current_date = current_date_time.toString("yyyy_MM_dd_hh_mm_ss");
+        QString time =  current_date + ".dmp";
+          EXCEPTION_RECORD *record = pException->ExceptionRecord;
+          QString errCode(QString::number(record->ExceptionCode, 16));
+          QString errAddr(QString::number((uint64_t)record->ExceptionAddress, 16));
+          QString errFlag(QString::number(record->ExceptionFlags, 16));
+          QString errPara(QString::number(record->NumberParameters, 16));
+          qDebug()<<"errCode: "<<errCode;
+          qDebug()<<"errAddr: "<<errAddr;
+          qDebug()<<"errFlag: "<<errFlag;
+          qDebug()<<"errPara: "<<errPara;
+          HANDLE hDumpFile = CreateFile((LPCWSTR)QString(ExceptDmpPath + time).utf16(),
+                   GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+          if(hDumpFile != INVALID_HANDLE_VALUE) {
+              MINIDUMP_EXCEPTION_INFORMATION dumpInfo;
+              dumpInfo.ExceptionPointers = pException;
+              dumpInfo.ThreadId = GetCurrentThreadId();
+              dumpInfo.ClientPointers = TRUE;
+              MiniDumpWriteDump(GetCurrentProcess(), GetCurrentProcessId(),hDumpFile, MiniDumpNormal, &dumpInfo, NULL, NULL);
+              CloseHandle(hDumpFile);
+          }
+          else{
+              qDebug()<<"hDumpFile == null";
+          }
+          return EXCEPTION_EXECUTE_HANDLER;
+}
+
 
 int main(int argc, char *argv[])
 {
@@ -72,6 +116,10 @@ int main(int argc, char *argv[])
     strLocaLogFile+=".log";
     g_LogFile=strLocaLogFile;
     OutDebugInfoTofile();
+
+    //Add crash dump file
+    SetUnhandledExceptionFilter((LPTOP_LEVEL_EXCEPTION_FILTER)ApplicationCrashHandler);
+    
     MainWindow w;
     w.showMaximized();
     w.setWindowFlags(Qt::FramelessWindowHint);      //ENABLE FULLSCREEN WINDOW FOR APP TO RUN
