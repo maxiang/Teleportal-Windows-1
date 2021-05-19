@@ -27,5 +27,17 @@
         <file>../assets/icons/camera_normal.png</file>
         <file>../assets/icons/mute_off.png</file>
         <file>../assets/icons/mute_on.png</file>
+        <file>../assets/icons/G.png</file>
+        <file>../assets/icons/T.png</file>
+        <file>../assets/icons/S.png</file>
+        <file>../assets/icons/W.png</file>
+        <file>../assets/icons/F.png</file>
+        <file>../assets/icons/D.png</file>
+        <file>../assets/icons/A.png</file>
+        <file>../assets/icons/RIGHT.png</file>
+        <file>../assets/icons/LEFT.png</file>
+        <file>../assets/icons/DOWN.png</file>
+        <file>../assets/icons/UP.png</file>
+        <file>../assets/icons/R.png</file>
     </qresource>
 </RCC>

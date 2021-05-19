@@ -5,7 +5,6 @@
 #include <QGamepadManager>
 #include <QMediaPlayer>
 
-
 // THIS APP USES ARDUSUB_API TO COMMUNICATE WITH ROBOT 192.168.2.2:14???
 // THIS APP USES GSTREAMER TO PLAY LIVE VIDEO STREAM ON PORT 5600
 // THIS APP USES PING TO RECEIVE SONAR DATA
@@ -39,8 +38,8 @@ MainWindow::MainWindow(QWidget *parent)		//START APPLICATION
     manual_control.y = 0;
     manual_control.z = 500;
     manual_control.r = 0;
-    manual_control.buttons = 0;
-
+    manual_control.buttons = 0;				//manual_control.buttons is a bitmask http://www.bradgoodman.com/bittool/
+    
     pressedKey.W = false;
     pressedKey.S = false;
     pressedKey.A = false;
@@ -62,10 +61,16 @@ MainWindow::MainWindow(QWidget *parent)		//START APPLICATION
     keyControlValue.turnRightM = 300;
 
     // SETUP MISC VARIABLES
-    m_modeIndex = 1;
     IdleTime = 1;
     firstRun = false;
-    bdepthhold=false;
+    bdepthhold = false;
+    bArmState = false;
+    bSpeed = true;
+    bMode = true;
+    iButton = 0;
+    iButtonNo = 0;
+    bBold = false;
+    bsftpIdle=true;
 
     // DISPLAY VIDEO AND LOAD TOOLBAR
     on_actionVideo_triggered();
@@ -85,12 +90,11 @@ MainWindow::MainWindow(QWidget *parent)		//START APPLICATION
     bas_init_status=true;
     qDebug() << "ROBOT INITILIZED (86)";
 
-
     // SETUP MAIN LOOP
     connect(this,SIGNAL(SetQMLText()),this,SLOT(on_setQmlText()));
     setupTimer();
+    connect(ui->quickWidget,SIGNAL(statusChanged(QQuickWidget::Status)),this,SLOT(On_QML_StatusChanged(QQuickWidget::Status)));   //qml key indicators
     videoReceiver->start(ui->quickWidget);
-    UpdateMapTopLableText("NO CONNECTION TO ROBOT");
 
     // LOAD MAPS
     connect(ui->quickWidget_2,SIGNAL(statusChanged(QQuickWidget::Status)),this,SLOT(on_statusChanged(QQuickWidget::Status)));
@@ -103,6 +107,23 @@ MainWindow::MainWindow(QWidget *parent)		//START APPLICATION
         CheckRollOrPitchChang(true);
     });
     rollLPitchCheckTimer.start();
+
+    // SETUP KEYBOARD KEY IMAGES STARTING OPACITY
+    SetQMLItemOpacity("Up",0.5); 
+    SetQMLItemOpacity("Down",0.5);
+    SetQMLItemOpacity("TurnLeft",0.5);
+    SetQMLItemOpacity("TurnRight",0.5);
+    SetQMLItemOpacity("MoveLeft",0.5);
+    SetQMLItemOpacity("MoveRight",0.5);
+    SetQMLItemOpacity("ForWard",0.5);
+    SetQMLItemOpacity("BackWard",0.5);
+    SetQMLItemOpacity("CamUp",0.5);
+    SetQMLItemOpacity("CamDown",0.5);
+    SetQMLItemOpacity("LightsUp",0.5);
+    SetQMLItemOpacity("LightsDown",0.5);
+    SetQMLItemOpacity("ArmState",0.8);
+    SetQMLItemOpacity("DiveMode",0.8);
+    SetQMLItemOpacity("Speed",0.8);
 }
 
 
@@ -111,7 +132,7 @@ MainWindow::~MainWindow()
     //ON SHUTDOWN DISARM ROBOT
     qDebug() << "Program Attempting To Exited";
     armCheckBox->setChecked(false);
-    armCheckBox_stateChanged(Qt::Unchecked);
+    armCheckBox_stateChanged(true);
     delete ui;
     qDebug() << "Program Exited Successfully?";
 }
@@ -128,7 +149,8 @@ void MainWindow::setupToolBars()
     armCheckBox->setText("CLICK TO START - ROBOT DISARMED");
     armCheckBox->setCheckable(true);
     armCheckBox->setChecked(false);
-   armCheckBox->setStyleSheet("border-style: outset;"
+    armCheckBox->setVisible(false);								// Hide Top Arm/DisArm Button
+   /*armCheckBox->setStyleSheet("border-style: outset;"
                               "border-width: 1px;"
                               "border-radius: 2px;"
                               "border-color: beige;"
@@ -138,29 +160,31 @@ void MainWindow::setupToolBars()
                               "color: rgb(255, 255, 255);"
                               "font: 87 12pt \"Arial Black\";");
     armCheckBox->setFocusPolicy(Qt::NoFocus);
+    */
     AddToolBarSpacer(ui->vehicleToolBar);
     ui->vehicleToolBar->addWidget(armCheckBox);
     AddToolBarSpacer(ui->vehicleToolBar);
     connect(armCheckBox,SIGNAL(clicked(bool)),
                      this,SLOT(armCheckBox_stateChanged(bool)));
-    UpdateMapTopLableText("NO CONNECTION TO ROBOT");
-    //AddToolBarSpacer(ui->tabsToolBar,100);
+    UpdateMapTopLableText("ROBOT DATA LINK FAILED");
     AddToolBarSpacer(ui->tabsToolBar);
     QLabel *modeLable = new QLabel(this);
     modeLable->setText("MODE: ");
+    modeLable->setVisible(false);										// Hide Top Dive Mode Label
     modeLable->setStyleSheet("font: 87 10pt \"Arial Black\"");
     ui->tabsToolBar->addWidget(modeLable);
     modeComboBox = new QPushButton(this);
     modeComboBox->setText("Unknown");
     modeComboBox->setStyleSheet("font: 87 10pt \"Arial Black\"");
     modeComboBox->setFocusPolicy(Qt::NoFocus);
-    modeComboBox->show();
+    modeComboBox->setVisible(false);								// Hide Top Dive Mode Label
+    // modeComboBox->show();
     connect (modeComboBox , SIGNAL(clicked()) , this , SLOT(on_modeBt_clicked()) );
     ui->tabsToolBar->addWidget(modeComboBox);
 
     // SONAR DISPLAY
     SonarLabel=new QLabel("SONAR: ");
-    SonarlValue = new QLabel("21.0 M (95%)   ");
+    SonarlValue = new QLabel("00.0 M (00%)   ");
     SonarlValue->setFocusPolicy(Qt::NoFocus);
     SonarLabel->setStyleSheet("font: 87 10pt \"Arial Black\"");
     SonarlValue->setStyleSheet("font: 87 10pt \"Arial Black\"");
@@ -182,6 +206,7 @@ void MainWindow::setupToolBars()
     rollLabelValue->setFocusPolicy(Qt::NoFocus);
 
     //HIDE UNUSED YAW, PITCH & ROLL VALUES FROM TOOLBAR
+
     pitchLabel->setVisible(false);
     pitchLabelValue->setVisible(false);
     rollLabel->setVisible(false);
@@ -230,46 +255,15 @@ void MainWindow::setupToolBars()
     strRollValue=rollLabelValue->text();
     strPitchValue=pitchLabelValue->text();
     ResizeToolBar();
+
+      	
 }
 
 
 void MainWindow::on_modeBt_clicked(){
 
-   	//WHEN USER CLICKS ON MODE BUTTON - CHANGE MODE
-    QKeyEvent* event=nullptr;
+//Depreciated...
 
-		//CHECK IF ROBOT IS ARMED
-		if (!armCheckBox->isChecked())		
-        {
-            return;
-        }
-
-        //CHANGE TO THE NEXT MODE
-	    if(modeComboBox->text()=="DEPTH HOLD")
-	    {
-	        event=new QKeyEvent(QEvent::KeyPress,Qt::Key_3, Qt::NoModifier);
-	    }
-	    else if(modeComboBox->text()=="STABILITY")
-	    {
-	        // IF DEPTH HOLD MODE IS ENABLED USE IT
-	    	if (bdepthhold)
-	    	{
-	        	event=new QKeyEvent(QEvent::KeyPress,Qt::Key_2, Qt::NoModifier);
-			}
-			if (!bdepthhold)
-			{
-				event=new QKeyEvent(QEvent::KeyPress,Qt::Key_3, Qt::NoModifier);
-			}	    
-	    }
-
-	    else if(modeComboBox->text()=="MANUAL")
-	    {
-	        event=new QKeyEvent(QEvent::KeyPress,Qt::Key_1, Qt::NoModifier);
-	    }
-		if(event)
-		    {
-		        QGuiApplication::sendEvent(this, event);
-		    }   
 }
 
 
@@ -293,6 +287,10 @@ void MainWindow::updateVehicleData()
     if (!AS::as_api_check_vehicle(currentVehicle))
     {
         // IF ROBOT IS NOT CONNECTED RETURN
+        UpdateMapTopLableText("ROBOT DATA LINK FAILED");
+        QObject* markerItem3=ui->quickWidget->rootObject()->findChild<QObject*>("ArmState");
+    	markerItem3->setProperty("enabled",QVariant::fromValue(false));
+        bConnection = false;
         qDebug() << "Robot is not connected (296)";
         return;
     }
@@ -301,12 +299,15 @@ void MainWindow::updateVehicleData()
     {
         // SEND COMMANDS TO ROBOT ON STARTUP (DISARM, STABILITY MODE)
         	qDebug() << "Attempting first connection to Robot";
-            armCheckBox->setChecked(false);				// DISARM ROBOT
-            armCheckBox_stateChanged(true);
+
             firstRun = true;
-            m_modeIndex = 1;
-            manual_control.buttons = 8;            		 // STABILITY MODE
-            modeComboBox->setText("STABILITY");
+
+            QObject* markerItem3=ui->quickWidget->rootObject()->findChild<QObject*>("ArmState");
+    		markerItem3->setProperty("enabled",QVariant::fromValue(true));
+
+            UpdateMapTopLableText("CONNECTED - ARM ROBOT TO START");
+            bConnection = false;
+
             PlayMediaFileMapText("reconnect");			//PLAY WELCOME BACK MP3
     }
 
@@ -364,7 +365,7 @@ void MainWindow::updateVehicleData()
         QQuickItem* pImgItem=ui->quickWidget_2->rootObject()->findChild<QQuickItem*>("markerimg");
         if(pImgItem)
         {
-            pImgItem->setRotation(yawLableCompass);
+            pImgItem->setRotation(yawLableCompass);				//Rotate Icon on Map with Compass
         }
     }
 
@@ -376,14 +377,14 @@ void MainWindow::updateVehicleData()
         if ((IdleTime > iIdleSetting) == true)
         {
             armCheckBox->setChecked(false);
-            armCheckBox_stateChanged(Qt::Unchecked);
+            armCheckBox_stateChanged(true);
             PlayMediaFileMapText("timeout");
             qDebug() << "No Human Detected - Disarming Robot (381)";
         }
 
     //UPDATE MODE LABEL    
-    CheckRollOrPitchChang(false);
-    UpdateModeLable();
+    CheckRollOrPitchChang(false);			//CHECK FOR LOSS OF CONNECTION WITH ROBOT
+    UpdateModeLable();						//CHECK IF ROBOT IS DISARMED AND UPDATE UI
 }
 
 
@@ -396,6 +397,28 @@ void MainWindow::manualControl()
         AS::as_api_manual_control(manual_control.x, manual_control.y,
                                   manual_control.z, manual_control.r,
                                   manual_control.buttons, currentVehicle);
+    
+//Adam hack to stop constant button pressing (except cam tilt)
+    if (manual_control.buttons == 1024)
+    {
+        return;
+    }   
+    else if (manual_control.buttons == 512)
+    {
+        return;
+    }
+    else if (manual_control.buttons == iButton)
+    {
+        iButtonNo = (iButtonNo + 1);
+    }
+    else if (iButtonNo == 5)     //Let 5 commands get through before clearing data
+    {
+        manual_control.buttons = 0;
+    }
+    else
+        {
+        iButton = manual_control.buttons;
+        }
     }
 }
 
@@ -465,6 +488,7 @@ void MainWindow::keyPressEvent(QKeyEvent *event)
     // KEY W - UP
     if (event->key() == Qt::Key_W)
     {
+        SetQMLItemOpacity("Up",1.0);
         // CHECK IF ROBOT IS ARMED, IF NOT REARM ROBOT
         
         if (!armCheckBox->isChecked())		
@@ -483,6 +507,7 @@ void MainWindow::keyPressEvent(QKeyEvent *event)
     // KEY S - DOWN
     else if (event->key() == Qt::Key_S)
     {
+        SetQMLItemOpacity("Down",1.0);
         // CHECK IF ROBOT IS ARMED, IF NOT REARM ROBOT
         if (!armCheckBox->isChecked())		
         {
@@ -504,6 +529,7 @@ void MainWindow::keyPressEvent(QKeyEvent *event)
     // KEY A - ROTATE ROBOT LEFT
     else if (event->key() == Qt::Key_A)
     {
+        SetQMLItemOpacity("TurnLeft",1.0);
         // CHECK IF ROBOT IS ARMED, IF NOT REARM ROBOT
         if (!armCheckBox->isChecked())		
         {
@@ -516,15 +542,11 @@ void MainWindow::keyPressEvent(QKeyEvent *event)
         pressedKey.A = true;
 
          //CHECK MODE OF ROBOT AND GIVE CORRECT INPUT BASED ON MODE - MANUAL MODE VERY FAST
-        if (m_modeIndex == 0)			
+        if (!bMode)			
         {
             manual_control.r = keyControlValue.turnLeftM;
         }
-        else if (m_modeIndex == 1)
-        {
-            manual_control.r = keyControlValue.turnLeft;
-        }
-        else if (m_modeIndex == 2)
+        else if (bMode)
         {
             manual_control.r = keyControlValue.turnLeft;
         }
@@ -533,6 +555,7 @@ void MainWindow::keyPressEvent(QKeyEvent *event)
     // KEY D - ROTATE ROBOT RIGHT
     else if (event->key() == Qt::Key_D)
     {
+        SetQMLItemOpacity("TurnRight",1.0);
         // CHECK IF ROBOT IS ARMED, IF NOT REARM ROBOT
         if (!armCheckBox->isChecked())
         {
@@ -545,23 +568,20 @@ void MainWindow::keyPressEvent(QKeyEvent *event)
         pressedKey.D = true;
 
         // CHECK MODE OF ROBOT AND GIVE CORRECT INPUT BASED ON MODE - MANUAL MODE VERY FAST
-        if (m_modeIndex == 0)
+        if (!bMode)
         {
             manual_control.r = keyControlValue.turnRightM;
         }
-        else if (m_modeIndex == 1)
+        else if (bMode)
         {
            manual_control.r = keyControlValue.turnRight;
-        }
-        else if (m_modeIndex == 2)
-        {
-            manual_control.r = keyControlValue.turnRight;
         }
     }
 
     // KEY UP - MOVE ROBOT FORWARD
     else if (event->key() == Qt::Key_Up)
     {
+        SetQMLItemOpacity("ForWard",1.0);
         // CHECK IF ROBOT IS ARMED, IF NOT REARM ROBOT
         if (!armCheckBox->isChecked())
         {
@@ -584,6 +604,7 @@ void MainWindow::keyPressEvent(QKeyEvent *event)
     // KEY DOWN - MOVE ROBOT BACKWARD
     else if (event->key() == Qt::Key_Down)
     {
+        SetQMLItemOpacity("BackWard",1.0);
         // CHECK IF ROBOT IS ARMED, IF NOT REARM ROBOT
         if (!armCheckBox->isChecked())
         {
@@ -602,6 +623,7 @@ void MainWindow::keyPressEvent(QKeyEvent *event)
     // KEY LEFT - MOVE ROBOT LEFT
     else if (event->key() == Qt::Key_Left)
     {
+        SetQMLItemOpacity("MoveLeft",1.0);
         // CHECK IF ROBOT IS ARMED, IF NOT REARM ROBOT
         if (!armCheckBox->isChecked())
         {
@@ -620,6 +642,7 @@ void MainWindow::keyPressEvent(QKeyEvent *event)
     // KEY RIGHT - MOVE ROBOT RIGHT
     else if (event->key() == Qt::Key_Right)
     {
+        SetQMLItemOpacity("MoveRight",1.0);
         // CHECK IF ROBOT IS ARMED, IF NOT REARM ROBOT
         if (!armCheckBox->isChecked())		
         {
@@ -638,6 +661,7 @@ void MainWindow::keyPressEvent(QKeyEvent *event)
     // KEY R - CAMERA TILT UP
     else if (event->key() == Qt::Key_R)
      {
+        SetQMLItemOpacity("CamUp",1.0);
         // CHECK IF ROBOT IS ARMED, IF NOT REARM ROBOT
         if (!armCheckBox->isChecked())
         {
@@ -655,6 +679,7 @@ void MainWindow::keyPressEvent(QKeyEvent *event)
      // KEY F - CAMERA TILT DOWN
      else if (event->key() == Qt::Key_F)
      {
+        SetQMLItemOpacity("CamDown",1.0);
         // CHECK IF ROBOT IS ARMED, IF NOT REARM ROBOT
         if (!armCheckBox->isChecked())
         {
@@ -671,6 +696,7 @@ void MainWindow::keyPressEvent(QKeyEvent *event)
    // KEY T - LIGHTS BRIGHTER
    else if (event->key() == Qt::Key_T)
      {
+        SetQMLItemOpacity("LightsUp",1.0);
         // CHECK IF ROBOT IS ARMED, IF NOT REARM ROBOT
         if (!armCheckBox->isChecked())
         {
@@ -687,6 +713,7 @@ void MainWindow::keyPressEvent(QKeyEvent *event)
      // KEY G - LIGHTS DIMMER
      else if (event->key() == Qt::Key_G)
      {
+        SetQMLItemOpacity("LightsDown",1.0);
         // CHECK IF ROBOT IS ARMED, IF NOT REARM ROBOT
         if (!armCheckBox->isChecked())
         {
@@ -702,105 +729,98 @@ void MainWindow::keyPressEvent(QKeyEvent *event)
      }
 
 
-      // KEY 1 - STABILITY MODE
+
+// KEY 1 - LOW SPEED
       else if (event->key() == Qt::Key_1)
+     {
+         if (!armCheckBox->isChecked())
+        {
+            armCheckBox->setChecked(true);
+            armCheckBox_stateChanged(true);
+            return;
+         }
+            qDebug() << "You Pressed Key 1 - LOW SPEED";
+            SetQMLItemText("Speed","LOW SPEED");
+            bSpeed = false;
+            SetQMLItemOpacity("Speed",0.8);
+            manual_control.buttons = 4096;
+     }
+
+ // KEY 2 - HIGH SPEED
+      else if (event->key() == Qt::Key_2)
+     {
+         if (!armCheckBox->isChecked())
+        {
+            armCheckBox->setChecked(true);
+            armCheckBox_stateChanged(true);
+            return;
+         }
+            qDebug() << "You Pressed Key 2 - HIGH SPEED";
+            SetQMLItemText("Speed","HIGH SPEED");
+            bSpeed = true;
+            SetQMLItemOpacity("Speed",1.0);
+            manual_control.buttons = 2048;
+     }
+
+      // KEY 4 - STABILITY MODE
+      else if (event->key() == Qt::Key_4)
      {
          if (armCheckBox->isChecked())
          {
-         	qDebug() << "You Pressed Key 1 - STABILITY MODE";
-         	UpdateKeyControlValue();
-         	m_modeIndex = 1;
-         	manual_control.buttons = 8;
-         	modeComboBox->setText("STABILITY");
+         	qDebug() << "You Pressed Key 4 - STABILIZED MODE";
+            SetQMLItemText("DiveMode","STABILIZED");
+            bMode = true;
+            SetQMLItemOpacity("DiveMode",1.0);
+            manual_control.buttons = 8;
+            UpdateKeyControlValue();
          	PlayMediaFileMapText("stability");
          }
      }
    
-   // KEY 2 - DEPTH HOLD MODE
-   else if (event->key() == Qt::Key_2)
-     {
-     	 if (armCheckBox->isChecked())
-         {
-         	if (bdepthhold)
-         	{	
-         		UpdateKeyControlValue();
-         		m_modeIndex = 2;
-         		manual_control.buttons = 4;
-         		modeComboBox->setText("DEPTH HOLD");
-         		PlayMediaFileMapText("depth");
-         		qDebug() << "You Pressed Key 2 - DEPTH HOLD MODE";
-         	}
-     	}
-     }
-     
+   // KEY 7 - DEPTH HOLD MODE
+   // else if (event->key() == Qt::Key_7)
+   //  {
+   //  	 if (armCheckBox->isChecked())
+   //      {
+   //      	if (bdepthhold)
+   //       	{	
+   //      		UpdateKeyControlValue();
+   //      		manual_control.buttons = 4;
+   //      		modeComboBox->setText("DEPTH HOLD");
+   //      		PlayMediaFileMapText("depth");
+   //      		qDebug() << "You Pressed Key 2 - DEPTH HOLD MODE";
+   //      	}
+   //  	}
+   //  }
+   
+
      // KEY 3 - MANUAL MODE
      else if (event->key() == Qt::Key_3)
      {
          if (armCheckBox->isChecked())
          {
          	qDebug() << "You Pressed Key 3 - MANUAL MODE";
-         	UpdateKeyControlValue();
-         	m_modeIndex = 0;
-         	manual_control.buttons = 2;
-         	modeComboBox->setText("MANUAL");
-         	PlayMediaFileMapText("manual");
+            SetQMLItemText("DiveMode","MANUAL");
+            bMode = false;
+            SetQMLItemOpacity("DiveMode",0.8);
+            manual_control.buttons = 2;
+            UpdateKeyControlValue();
+            PlayMediaFileMapText("manual");
      	}
      }
 
-     // KEY 4 - DISARM ROBOT
-     else if (event->key() == Qt::Key_4)
-     {
-         qDebug() << "You Pressed Key 4 - DISARM ROBOT";
-         UpdateKeyControlValue();
-
-         // RESET ROBOT INPUT VALUES BEFORE DISARMING
-         manual_control.x = 0;
-         manual_control.y = 0;
-         manual_control.z = 500;
-         manual_control.r = 0;
-         manual_control.buttons = 0;
-
-         // DISARM ROBOT
-         AS::as_api_vehicle_disarm(currentVehicle, 1);
-         armCheckBox->setStyleSheet("border-style: outset;"
-                                    "border-width: 1px;"
-                                    "border-radius: 2px;"
-                                    "border-color: beige;"
-                                    "min-width: 10em;"
-                                    "padding: 6px;"
-                                    "background:rgb(0, 255, 0);"
-                                    "color: rgb(255, 255, 255);"
-                                    "font: 87 12pt \"Arial Black\";");
-         armCheckBox->setText("CLICK TO START - ROBOT DISARMED");
-         armCheckBox->setChecked(false);
-         UpdateMapTopLableText("");
-         PlayMediaFileMapText("disarm");
-         qDebug() << "ROBOT DISARMED";
-     }
-
-     // KEY 5 - ARM ROBOT
+     // KEY 5 - DISARM ROBOT
      else if (event->key() == Qt::Key_5)
      {
-         qDebug() << "You Pressed Key 5 - ARM ROBOT";
-         UpdateKeyControlValue();
+        	armCheckBox->setChecked(false);
+            armCheckBox_stateChanged(true);
+     }
 
-         // ARM ROBOT
-         AS::as_api_vehicle_arm(currentVehicle, 1);
-         armCheckBox->setStyleSheet("border-style: outset;"
-                                    "border-width: 1px;"
-                                    "border-radius: 2px;"
-                                    "border-color: beige;"
-                                    "min-width: 10em;"
-                                    "padding: 6px;"
-                                    "background:rgb(255,0, 0);"
-                                    "color: rgb(255, 255, 255);"
-                                    "font: 87 12pt \"Arial Black\";");
-         armCheckBox->setText("ROBOT ARMED");
-         armCheckBox->setChecked(true);
-         UpdateMapTopLableText("");
-         PlayMediaFileMapText("arm");
-         qDebug() << "ROBOT ARMED";
-         
+     // KEY 6 - ARM ROBOT
+     else if (event->key() == Qt::Key_6)
+     {
+         	armCheckBox->setChecked(true);
+            armCheckBox_stateChanged(true); 
      }
      
      // KEY C - TAKE PHOTO
@@ -863,6 +883,8 @@ void MainWindow::keyReleaseEvent(QKeyEvent *event)
     {
         qDebug() << "You Released Key W";
         UpdateKeyControlValue(false);
+        SetQMLItemOpacity("Up",0.5);
+
         
         // IF OPPOSITE KEY IS PRESSED THEN DONT RESET VALUE TO ZERO
         if (pressedKey.S)
@@ -880,7 +902,7 @@ void MainWindow::keyReleaseEvent(QKeyEvent *event)
     {
         qDebug() << "You Released Key S";
         UpdateKeyControlValue(false);
-        
+        SetQMLItemOpacity("Down",0.5);
 		// IF OPPOSITE KEY IS PRESSED THEN DONT RESET VALUE TO ZERO
         if (pressedKey.W)
         {
@@ -897,6 +919,7 @@ void MainWindow::keyReleaseEvent(QKeyEvent *event)
     {
         qDebug() << "You Released Key A";
         UpdateKeyControlValue(false);
+        SetQMLItemOpacity("TurnLeft",0.5);
         
 		// IF OPPOSITE KEY IS PRESSED THEN DONT RESET VALUE TO ZERO
         if (pressedKey.D)
@@ -914,7 +937,7 @@ void MainWindow::keyReleaseEvent(QKeyEvent *event)
     {
         qDebug() << "You Released Key D";
         UpdateKeyControlValue(false);
-        
+        SetQMLItemOpacity("TurnRight",0.5);
         // IF OPPOSITE KEY IS PRESSED THEN DONT RESET VALUE TO ZERO
         if (pressedKey.A)
         {
@@ -931,7 +954,7 @@ void MainWindow::keyReleaseEvent(QKeyEvent *event)
     {
         qDebug() << "You Released Key Up";
         UpdateKeyControlValue(false);
-        
+        SetQMLItemOpacity("ForWard",0.5);
         // IF OPPOSITE KEY IS PRESSED THEN DONT RESET VALUE TO ZERO
         if (pressedKey.Down)
         {
@@ -948,7 +971,7 @@ void MainWindow::keyReleaseEvent(QKeyEvent *event)
     {
         qDebug() << "You Released Key Down";
         UpdateKeyControlValue(false);
-        
+        SetQMLItemOpacity("BackWard",0.5);
         // IF OPPOSITE KEY IS PRESSED THEN DONT RESET VALUE TO ZERO
         if (pressedKey.Up)
         {
@@ -965,7 +988,7 @@ void MainWindow::keyReleaseEvent(QKeyEvent *event)
     {
         qDebug() << "You Released Key Left";
         UpdateKeyControlValue(false);
-        
+        SetQMLItemOpacity("MoveLeft",0.5);
         // IF OPPOSITE KEY IS PRESSED THEN DONT RESET VALUE TO ZERO
         if (pressedKey.Right)
         {
@@ -982,7 +1005,7 @@ void MainWindow::keyReleaseEvent(QKeyEvent *event)
     {
         qDebug() << "You Released Key Right";
         UpdateKeyControlValue(false);
-        
+        SetQMLItemOpacity("MoveRight",0.5);
         // IF OPPOSITE KEY IS PRESSED THEN DONT RESET VALUE TO ZERO
         if (pressedKey.Left)
         {
@@ -999,6 +1022,7 @@ void MainWindow::keyReleaseEvent(QKeyEvent *event)
     {
         qDebug() << "You Released Key R";
         UpdateKeyControlValue(false);
+        SetQMLItemOpacity("CamUp",0.5);
         manual_control.buttons = 0;
     }
  
@@ -1006,6 +1030,7 @@ void MainWindow::keyReleaseEvent(QKeyEvent *event)
     {
         qDebug() << "You Released Key F";
         UpdateKeyControlValue(false);
+        SetQMLItemOpacity("CamDown",0.5);
         manual_control.buttons = 0;
     }
  
@@ -1013,6 +1038,7 @@ void MainWindow::keyReleaseEvent(QKeyEvent *event)
     {
         qDebug() << "You Released Key T";
         UpdateKeyControlValue(false);
+        SetQMLItemOpacity("LightsUp",0.5);
         manual_control.buttons = 0;
     }
  
@@ -1020,6 +1046,7 @@ void MainWindow::keyReleaseEvent(QKeyEvent *event)
     {
         qDebug() << "You Released Key G";
         UpdateKeyControlValue(false);
+        SetQMLItemOpacity("LightsDown",0.5);
         manual_control.buttons = 0;
     }
     
@@ -1064,91 +1091,52 @@ void MainWindow::on_actionMenu_triggered()
 
 void MainWindow::modeComboBox_currentIndexChanged(int index)
 {
-	// CHANGE MODE OF ROBOT WHEN MODE BUTTON IS CLICKED
-    
-	// CHECK IS ROBOT IS CONNECTED FIRST
-    if (!AS::as_api_check_vehicle(currentVehicle))
-    {
-        qDebug() << "vehicle: " << currentVehicle << "is not ready!";
-        return;
-    }
-
-    // CHANGE MODE ON ROBOT
-    switch (index)
-    {
-    case 0:
-        manual_control.buttons = 2;
-        modeComboBox->setText("MANUAL");
-
-        break;
-
-    case 1:
-        manual_control.buttons = 8;
-        modeComboBox->setText("STABILITY");
-        qDebug() << "Stability Mode? (1088)";
-        break;
-
-    case 2:
-    	if(bdepthhold)
-    	{
-    		manual_control.buttons = 4;
-        	modeComboBox->setText("DEPTH HOLD");
-        }
-        if(!bdepthhold)
-    	{
-    		manual_control.buttons = 2;
-        	modeComboBox->setText("MANUAL");
-        }
-        break;
-
-    default:
-        break;
-    }
+	//Depreciated...
 }
 
 
-void MainWindow::armCheckBox_stateChanged(bool checked)
+void MainWindow::armCheckBox_stateChanged(bool checked)		// ARM & DISARM ROBOT
 {
-    // ARM & DISARM ROBOT WHEN BUTTON IS CLICKED
-
     if (!AS::as_api_check_vehicle(currentVehicle))
-    {
-        
+    {	
     	// IF NO CONNECTION TO ROBOT
-        qDebug() << "vehicle: " << currentVehicle << "is not ready!";
         armCheckBox->setChecked(false);
-        armCheckBox->setStyleSheet("border-style: outset;"
-                                   "border-width: 1px;"
-                                   "border-radius: 2px;"
-                                   "border-color: beige;"
-                                   "min-width: 10em;"
-                                   "padding: 6px;"
-                                   "background:rgb(0, 255, 0);"
-                                   "color: rgb(255, 255, 255);"
-                                   "font: 87 12pt \"Arial Black\";");
-        armCheckBox->setText("CLICK TO START - ROBOT DISARMED");
-        UpdateMapTopLableText("NO CONNECTION TO ROBOT");
+        UpdateMapTopLableText("ROBOT DATA LINK FAILED");
+        QObject* markerItem3=ui->quickWidget->rootObject()->findChild<QObject*>("ArmState");
+    	markerItem3->setProperty("enabled",QVariant::fromValue(false));
+        bConnection = false;
+        qDebug() << "Robot is not connected (296)";
         return;
     }
 
     if (armCheckBox->isChecked())
     {
-        
-    	// ARM ROBOT
+        // ARM ROBOT
         AS::as_api_vehicle_arm(currentVehicle, 1);
-        armCheckBox->setStyleSheet("border-style: outset;"
-                                   "border-width: 1px;"
-                                   "border-radius: 2px;"
-                                   "border-color: beige;"
-                                   "min-width: 10em;"
-                                   "padding: 6px;"
-                                   "background:rgb(255,0, 0);"
-                                   "color: rgb(255, 255, 255);"
-                                   "font: 87 12pt \"Arial Black\";");
-        armCheckBox->setText("ROBOT ARMED");
         UpdateMapTopLableText("");
         PlayMediaFileMapText("arm");
-        qDebug() << "ROBOT ARMED (1151)";
+
+        SetQMLItemText("ArmState","ARMED");
+        bArmState = true;
+        SetQMLItemOpacity("ArmState",1.0);
+           
+		QObject* markerItem=ui->quickWidget->rootObject()->findChild<QObject*>("Speed");
+   		markerItem->setProperty("enabled",QVariant::fromValue(true));
+    	QObject* markerItem2=ui->quickWidget->rootObject()->findChild<QObject*>("DiveMode");
+    	markerItem2->setProperty("enabled",QVariant::fromValue(true));
+
+		SetQMLItemText("Speed","HIGH SPEED");
+        bSpeed = true;
+        SetQMLItemOpacity("Speed",1.0);
+
+        SetQMLItemText("DiveMode","STABILIZED");
+        bMode = true;
+        SetQMLItemOpacity("DiveMode",1.0);
+        UpdateKeyControlValue();
+
+    	manual_control.buttons = 2056;     //Dual command - Stability and High Speed Mode
+
+        qDebug() << "ROBOT ARMED";
         return;
     }
     if (!armCheckBox->isChecked())
@@ -1162,16 +1150,16 @@ void MainWindow::armCheckBox_stateChanged(bool checked)
 
         // DISARM ROBOT
         AS::as_api_vehicle_disarm(currentVehicle, 1);
-        armCheckBox->setStyleSheet("border-style: outset;"
-                                   "border-width: 1px;"
-                                   "border-radius: 2px;"
-                                   "border-color: beige;"
-                                   "min-width: 10em;"
-                                   "padding: 6px;"
-                                   "background:rgb(0, 255, 0);"
-                                   "color: rgb(255, 255, 255);"
-                                   "font: 87 12pt \"Arial Black\";");
-        armCheckBox->setText("CLICK TO START - ROBOT DISARMED");
+
+		SetQMLItemText("ArmState","DISARMED");
+        bArmState = false;
+        SetQMLItemOpacity("ArmState",0.8);
+    
+		QObject* markerItem=ui->quickWidget->rootObject()->findChild<QObject*>("Speed");
+   		markerItem->setProperty("enabled",QVariant::fromValue(false));
+    	QObject* markerItem2=ui->quickWidget->rootObject()->findChild<QObject*>("DiveMode");
+    	markerItem2->setProperty("enabled",QVariant::fromValue(false));
+
         UpdateMapTopLableText("");
         PlayMediaFileMapText("disarm");
         qDebug() << "DISARMING ROBOT (1176)";
@@ -1182,9 +1170,7 @@ void MainWindow::armCheckBox_stateChanged(bool checked)
 
 void MainWindow::on_actionSonarGps_triggered()
 {
-   
    //WHEN MAP BUTTON IS PRESSED SHOW MAP
-
     ui->mainStackedWidget->setCurrentIndex(2);
     ui->actionSonarGps->setChecked(true);
     ui->actionSonarGps->setDisabled(true);
@@ -1201,6 +1187,10 @@ void MainWindow::on_updateConfidence()
     // UPDATE SONAR VALUES DISTANCE AND CONFIDENCE - ALSO UPDATE WARNING AND DANGER
     float fDistance=pingLink->getDistance()/1000.0;
     float fConfidence=pingLink->getConfidence();
+    if (fConfidence = 100)
+    {
+        fConfidence = 99;
+    }
     //QString strValue=QString("%1 M (%2\%)   ").arg(fDistance = floor(100*fDistance) / 100).arg(fConfidence);    
     QString strValue=QString("%1 M (%2\%)   ").arg(round(fDistance * 100) / 100.0).arg(fConfidence);    //LIMIT DISTANCE TO 0.00 
     SonarlValue->setText(strValue);
@@ -1220,6 +1210,7 @@ void MainWindow::on_updateConfidence()
         strLabelName="SONAR: ";
         strNormalsty="color: rgb(0, 85, 0);";
         PrevTime=tcurrent;
+        QString mapTopLableText="";
     }
     
     // IF SONAR DISTANCE VALUE IS LESS THAN WARNING DISTANCE SETTING THEN OUTPUT WARNING
@@ -1229,6 +1220,25 @@ void MainWindow::on_updateConfidence()
         strLabelName="WARNING SONAR: ";
         strNormalsty="color: rgb(245, 81, 0);";
         PrevTime=tcurrent;
+        QString mapTopLableText="";
+        UpdateKeyControlValue();
+        if (pressedKey.S)
+        {
+        	manual_control.z = keyControlValue.downward;
+        }
+        else if (pressedKey.Up)
+        {
+        	manual_control.x = keyControlValue.forward;
+        }
+        else if (pressedKey.Left)
+        {
+        	manual_control.y = keyControlValue.leftward;
+        }
+        else if (pressedKey.Right)
+        {
+        	manual_control.y = keyControlValue.rightward;
+        }
+
     }
     
     // IF SONAR DISTANCE VALUE IS LESS THAN MIN DISTANCE SETTING THEN OUTPUT DANGER
@@ -1237,7 +1247,7 @@ void MainWindow::on_updateConfidence()
         SonarAlarm=true;
         strLabelName="DANGER SONAR: ";
         strNormalsty="color: rgb(255, 0, 0);";
-        mapTopLableText="PROXIMITY ALARM";
+        mapTopLableText="PROXIMITY ALERT";
         qDebug() << "PROXIMITY ALARM (1239)";
 
         // RESET ALL ROBOT INPUT VALUES TO ZERO - HALT ROBOT INPUT
@@ -1253,7 +1263,7 @@ void MainWindow::on_updateConfidence()
             armCheckBox->setChecked(false);
             armCheckBox_stateChanged(true);
             PrevTime=tcurrent;
-            mapTopLableText="OBSTACLE AVOIDANCE ENGAGED - DISARMING ROBOT";
+            mapTopLableText="OBSTACLE AVOIDANCE - DISARMED";
             PlayMediaFileMapText("collision");
             qDebug() << "OBSTACLE AVOIDANCE ENGAGED - DISARMING ROBOT";
         }
@@ -1345,7 +1355,7 @@ void MainWindow::RestartNetWork()
 
     // DISARM AND DISCONNECT FROM ROBOT
     armCheckBox->setChecked(false);
-    armCheckBox_stateChanged(Qt::Unchecked);
+    armCheckBox_stateChanged(true);
     AS::as_api_deinit();
     qDebug() << "DEINITIALIZED ROBOT CONNECTION (1348)";
 
@@ -1373,9 +1383,6 @@ void MainWindow::LoadInIConfig()
         sets.setValue("GPS/MapCoordinates",QStringList{"-14.0094983494893","80.1233232234234"});
         sets.setValue("GPS/MarkerCoordinates",QStringList{"-14.0094983494893","80.1233232234234"});
         sets.setValue("GPS/ardusubCoordinates",false);
-
-        // DEPTH_HOLD MODE ENABLED
-        //sets.setValue("DEPTH_HOLD/enabled",false);
 
         // KEYBOARD COMMAND PRESS
         sets.setValue("KEYBOARD_KEYPRESS/forward",500);
@@ -1482,9 +1489,6 @@ void MainWindow::LoadInIConfig()
     fMapCoordinates=sets.value("GPS/MapCoordinates",QStringList{"-14.0094983494893","80.1233232234234"}).toStringList();
     fMarkerCoordinates=sets.value("GPS/MarkerCoordinates",QStringList{"-14.0094983494893","80.1233232234234"}).toStringList();
     bardusubCoordinates=sets.value("GPS/ardusubCoordinates").toBool();
-
-	// DEPTH_HOLD MODE ENABLED
-    //bdepthhold=sets.setValue("DEPTH_HOLD/enabled").toBool();
 
     // KEYBOARD CONTROL SETTINGS
     keyControlValue_Press.forward=sets.value("KEYBOARD_KEYPRESS/forward").toInt();
@@ -1601,48 +1605,29 @@ void MainWindow::UpdateModeLable()
     // CHECK ROBOT DATA AND CHANGE BUTTON TO SHOW ACTUAL ROBOT MODE
     if(vehicle_data)
     {
-        if(vehicle_data->custom_mode==AS::ALT_HOLD)
-        {
-             modeComboBox->setText("DEPTH HOLD");
-             m_modeIndex = 2;
-        }
-        else if(vehicle_data->custom_mode==AS::MANUAL)
-        {
-            modeComboBox->setText("MANUAL");
-            m_modeIndex = 0;
-        }
-        else if(vehicle_data->custom_mode==AS::STABILIZE)
-        {
-            modeComboBox->setText("STABILITY");
-            m_modeIndex = 1;
-        }
+    //    if(vehicle_data->custom_mode==AS::ALT_HOLD)
+    //    {
+    //    }
+    //    else if(vehicle_data->custom_mode==AS::MANUAL)        //Problem with it since limiting button presses - needs timer to add delay?
+    //    {
+    //    }
+    //    else if(vehicle_data->custom_mode==AS::STABILIZE)
+    //    {
+    //    }
         
   		// CHECK ROBOT DATA AND CHANGE BUTTON TO SHOW ACTUAL ROBOT ARM STATUS WITH 2 SECOND DELAY
 
-        if(vehicle_data->system_status==3&&armCheckBox->text()!="CLICK TO START - ROBOT DISARMED")
+        if(vehicle_data->system_status==3&&bArmState==true)
         {
             QTimer::singleShot(2000, this,[&]()
     			{
-         			if(vehicle_data->system_status==3&&armCheckBox->text()!="CLICK TO START - ROBOT DISARMED")
+                    if(vehicle_data->system_status==3&&bArmState==true)
          				{
-         				armCheckBox->setStyleSheet("border-style: outset;"
-                                       "border-width: 1px;"
-                                       "border-radius: 2px;"
-                                       "border-color: beige;"
-                                       "min-width: 10em;"
-                                       "padding: 6px;"
-                                       "background:rgb(0, 255, 0);"
-                                       "color: rgb(255, 255, 255);"
-                                       "font: 87 12pt \"Arial Black\";");
-            			armCheckBox->setText("CLICK TO START - ROBOT DISARMED");
-            			armCheckBox->setChecked(false);
-            			UpdateMapTopLableText("");
-            			PlayMediaFileMapText("disarm");
+						armCheckBox->setChecked(false);
+            			armCheckBox_stateChanged(false);
          				}
     			});
         }
-        //qDebug() << "dive mode: " << vehicle_data->custom_mode;
-    	//qDebug() << "arm status: " << vehicle_data->system_status;
     }
 }
 
@@ -1753,15 +1738,15 @@ void MainWindow::on_setQmlText()
 
 void MainWindow::UpdateMapTopLableText(QString strTip)
 {
-	// RESET COLLISION WARNING AFTER 5 SECONDS
+	// RESET COLLISION WARNING AFTER 3 SECONDS
     mapTextCache=strTip;
     if(bmapState)
         return;
     emit SetQMLText();
-    if(strTip=="OBSTACLE AVOIDANCE ENGAGED - DISARMING ROBOT")
+    if(strTip=="OBSTACLE AVOIDANCE - DISARMED")
     {
         bmapState=true;
-        QTimer::singleShot(5000,this, [&](){
+        QTimer::singleShot(3000,this, [&](){
             bmapState=false;
             emit SetQMLText();
         });
@@ -1997,21 +1982,25 @@ void MainWindow::on_gamepadDisconnected(int deviceId)
 
 void MainWindow::on_actionTakePhoto_triggered()
 {
+    if(!bsftpIdle)
+        return;
+    bsftpIdle=false;
     // TAKE SCREENSHOT PHOTO AND UPLOAD TO SFTP SERVER
 
-    // DISABLE PHOTO ICON FOR PHOTO DELAY SETTING (CONFIG FILE) SECONDS
-    qDebug() << "TAKING A PHOTO (2001)";
+    // DISABLE PHOTO ICON FOR PHOTO DELAY SETTING SECONDS
     ui->actionTakePhoto->setDisabled(true);
-    QTimer::singleShot(strPhotoDelay*1000, this,[&]()
-    {
-         ui->actionTakePhoto->setEnabled(true);
-    });
-
+    /*
+            QTimer::singleShot(strPhotoDelay*1000, this,[&]()
+            {
+                 ui->actionTakePhoto->setEnabled(true);
+            });
+      */      
     // TAKE SCREENSHOT OF PROGRAM WINDOW
+    std::thread uploaderThread([&](){
     QScreen* scr=this->screen();
     QPixmap result = scr->grabWindow(this->winId());
 
-    // SAVE FILE LOCALLY USING PHOTO SETTINGS
+    // SAVE FILE LOCALLYS USING PHOTO SETTINGS
     QFileInfo info(strTakPhontoName);
     QString strTime=QDateTime::currentDateTime().toString("yyyyMMddHHmmss");
     QString strLocaTempFile="sftpfile/";
@@ -2024,15 +2013,159 @@ void MainWindow::on_actionTakePhoto_triggered()
     result.save(strLocaTempFile);
     PlayMediaFileMapText("photo");
 
-    // UPLOAD LOCAL FILE TO SFTP SERVER 
-    static SecureFileUploader sftp;
-    connect(&sftp,&SecureFileUploader::SftpEndcomplete,this,[&]{
-        bsftpIdle=true;
+    // UPLOAD LOCAL FILE TO SFTP SERVER
+    SecureFileUploader sftp;
+        
+        QEventLoop loop;
+        connect(&sftp,&SecureFileUploader::SftpEndcomplete,[&]{			//Looked Nice, but didnt work, never ended loop...
+            bsftpIdle=true;
+            ui->actionTakePhoto->setEnabled(true);
+            loop.quit();
+        });
 
-    });
     sftp.upload(strLocaTempFile,strRemoteDir,strHost,strUser,strPass);
-    qDebug() << "PHOTO UPLOADED (2032)";
+      
+        loop.exec();
+    });
+
+    uploaderThread.detach();
 }
+
+
+void  MainWindow::On_QML_ArmState()
+{
+    qDebug()<<"On_QML_ArmState";
+   
+   if (bArmState)
+   {
+      		armCheckBox->setChecked(false);
+            armCheckBox_stateChanged(true);
+    }
+
+   
+
+   else if (!bArmState)
+        {
+            armCheckBox->setChecked(true);
+            armCheckBox_stateChanged(true);
+        }
+}
+
+
+void  MainWindow::On_QML_DiveMode()
+{
+    qDebug()<<"On_QML_DiveMode";
+   
+   if (bMode)
+   {
+    if (!armCheckBox->isChecked())
+        {
+            armCheckBox->setChecked(true);
+            armCheckBox_stateChanged(true);
+            return;
+         }
+            qDebug() << "You Pressed Key 3 - MANUAL MODE";
+            SetQMLItemText("DiveMode","MANUAL");
+            bMode = false;
+            SetQMLItemOpacity("DiveMode",0.8);
+            manual_control.buttons = 2;
+            UpdateKeyControlValue();
+   }
+   else if (!bMode)
+        {
+           if (!armCheckBox->isChecked())
+        {
+            armCheckBox->setChecked(true);
+            armCheckBox_stateChanged(true);
+            return;
+         }
+            qDebug() << "You Pressed Key 4 - STABILIZED MODE";
+            SetQMLItemText("DiveMode","STABILIZED");
+            bMode = true;
+            SetQMLItemOpacity("DiveMode",1.0);
+            manual_control.buttons = 8;
+            UpdateKeyControlValue();
+        }
+}
+void  MainWindow::On_QML_Speed()
+{
+     qDebug()<<"On_QML_Speed Button Clicked";
+
+     if (bSpeed)
+        {
+            if (!armCheckBox->isChecked())
+        {
+            armCheckBox->setChecked(true);
+            armCheckBox_stateChanged(true);
+            return;
+         }
+            qDebug() << "You Pressed Key 1 - LOW SPEED";
+            SetQMLItemText("Speed","LOW SPEED");
+            bSpeed = false;
+            SetQMLItemOpacity("Speed",0.8);
+            manual_control.buttons = 4096;
+        }
+     else if (!bSpeed)
+        {
+           if (!armCheckBox->isChecked())
+        {
+            armCheckBox->setChecked(true);
+            armCheckBox_stateChanged(true);
+            return;
+         }
+            qDebug() << "You Pressed Key 2 - HIGH SPEED";
+            SetQMLItemText("Speed","HIGH SPEED");
+            bSpeed = true;
+            SetQMLItemOpacity("Speed",1.0);
+            manual_control.buttons = 2048;
+        }
+}
+
+void  MainWindow::Call_QML_ChangeKey(const QString& strKey)
+{
+    //Depreciated...
+}
+void  MainWindow::SetQMLItemOpacity(QString strObName,qreal fOpacity)
+{
+    if(m_qmlObjectMap.find(strObName)==m_qmlObjectMap.end())
+        return;
+    m_qmlObjectMap[strObName]->setProperty("opacity",QVariant::fromValue(fOpacity));
+}
+
+void  MainWindow::SetQMLItemText(QString strObName,QString strButtonText)
+{
+    if(m_qmlObjectMap.find(strObName)==m_qmlObjectMap.end())
+        return;
+    m_qmlObjectMap[strObName]->setProperty("text",QVariant::fromValue(strButtonText));
+}
+
+void  MainWindow::On_QML_StatusChanged(QQuickWidget::Status status)
+ {
+    if(status==QQuickWidget::Ready)
+    {
+        auto hButton=ui->quickWidget->rootObject()->findChild<QObject*>("DiveMode");
+        QObject::connect(hButton,SIGNAL(clicked()),this,SLOT(On_QML_DiveMode()));
+        m_qmlObjectMap["DiveMode"]=hButton;
+        hButton=ui->quickWidget->rootObject()->findChild<QObject*>("Speed");
+        QObject::connect(hButton,SIGNAL(clicked()),this,SLOT(On_QML_Speed()));
+        m_qmlObjectMap["Speed"]=hButton;
+        hButton=ui->quickWidget->rootObject()->findChild<QObject*>("ArmState");
+        QObject::connect(hButton,SIGNAL(clicked()),this,SLOT(On_QML_ArmState()));
+        m_qmlObjectMap["ArmState"]=hButton;
+        //keyimg
+        QStringList strImgList={"ForWard","MoveLeft","BackWard",
+                                "MoveRight","Up","TurnLeft","Down",
+                                "TurnRight","CamUp","LightsUp",
+                               "CamDown","LightsDown"};
+
+       for(auto i:strImgList)
+       {
+           m_qmlObjectMap[i]=ui->quickWidget->rootObject()->findChild<QObject*>(i);
+       }
+
+    }
+ }
+
 
 	// HEY THIS WAS A HARD PROJECT TO LEARN TO CODE WITH QT & C++ FOR FIRST TIME - GIVE ME A BREAK
 	// adam@osibot.com

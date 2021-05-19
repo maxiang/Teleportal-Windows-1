@@ -81,6 +81,14 @@ private slots:
 
     void on_actionTakePhoto_triggered();
 
+//qml key indicators
+    void  On_QML_StatusChanged(QQuickWidget::Status status);
+    void  On_QML_ArmState();
+    void  On_QML_DiveMode();
+    void  On_QML_Speed();
+    void  Call_QML_ChangeKey(const QString& strKey);
+    void  SetQMLItemOpacity(QString strObName,qreal fOpacity=1);
+    void  SetQMLItemText(QString strObName,QString strButtonText);
 
 private:
     Ui::MainWindow *ui;
@@ -103,7 +111,7 @@ private:
     QTimer vehicleDataUpdateTimer;
     QTimer manualControlTimer;
 
-    int m_modeIndex; 
+    //int m_modeIndex; 
     uint IdleTime;                        //Changin Combobox to Button
 	bool	firstRun;
     bool robot_status_delay;                     // first run flag 2020/02/20
@@ -139,6 +147,18 @@ private:
     bool            bsftpIdle;
     QTime           tLastUpLoad;
     bool            bdepthhold;
+
+    bool            bArmState;
+    bool            bSpeed;
+    bool            bMode;
+    int             iButton;        //Stoping to many manual_control.buttons data being sent.
+    int             iButtonNo; 
+    bool            bBold;
+
+    QString         strSpeed;
+    QString         strDiveMode;
+
+    bool            bConnection;
 
     typedef struct
     {
@@ -195,6 +215,10 @@ private:
     uint8_t currentVehicle;
     AS::Vehicle_Data_t *vehicle_data;
 
+
+
+    QMap<QString,QObject*>              m_qmlObjectMap;         //qml key indicators
+    
     void setupToolBars();
     void setupTimer();
 

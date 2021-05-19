@@ -25,6 +25,7 @@
 SecureFileUploader::SecureFileUploader(QObject *parent) :
     QObject(parent), m_connection(0)
 {
+    qDebug()<<"SecureFileUploaderID";
 }
 
 void SecureFileUploader::upload(const QString &localFile, const QString &dest, const QString &host,

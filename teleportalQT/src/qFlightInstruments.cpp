@@ -56,18 +56,16 @@ void QADI::paintEvent(QPaintEvent *)
 {
     QPainter painter(this);
 
-//    QBrush bgSky(QColor(48,172,220));
-//    QBrush bgGround(QColor(247,168,21));
-    QBrush bgSky(Qt::blue);
-    QBrush bgGround(QColor(255, 85, 0));
+    QBrush bgSky(QColor(134, 173, 255));
+    QBrush bgGround(Qt::darkBlue);
 
     QPen   whitePen(Qt::white);
     QPen   blackPen(Qt::black);
     QPen   pitchPen(Qt::white);
     QPen   pitchZero(Qt::white);
 
-    whitePen.setWidth(2);
-    blackPen.setWidth(2);
+    whitePen.setWidth(3);
+    blackPen.setWidth(3);
     pitchZero.setWidth(3);
 
     painter.setRenderHint(QPainter::Antialiasing);
@@ -257,7 +255,7 @@ void QADI::paintEvent(QPaintEvent *)
 
 void QADI::keyPressEvent(QKeyEvent *event)
 {
-    switch (event->key()) {
+  /*  switch (event->key()) {
     case Qt::Key_Left:
         m_roll -= 1.0;
         break;
@@ -278,6 +276,7 @@ void QADI::keyPressEvent(QKeyEvent *event)
     }
 
     update();
+    */
 }
 
 
@@ -362,7 +361,7 @@ void QCompass::paintEvent(QPaintEvent *)
         qreal   rotAng = 360.0 / yawLines;
         int     yawLineLeng = m_size/25;
         double  fx1, fy1, fx2, fy2;
-        int     fontSize = 8;
+        int     fontSize = 8.5;
         QString s;
 
         blackPen.setWidth(1);
@@ -373,22 +372,22 @@ void QCompass::paintEvent(QPaintEvent *)
                 s = "N";
                 painter.setPen(bluePen);
 
-                painter.setFont(QFont("Arial", static_cast<int>(fontSize*1.2)));
+                painter.setFont(QFont("Arial", static_cast<int>(fontSize*1.3)));
             } else if ( i == 9 ) {
                 s = "E";
                 painter.setPen(blackPen);
 
-                painter.setFont(QFont("Arial", static_cast<int>(fontSize*1.2)));
+                painter.setFont(QFont("Arial", static_cast<int>(fontSize*1.3)));
             } else if ( i == 18 ) {
                 s = "S";
                 painter.setPen(redPen);
 
-                painter.setFont(QFont("Arial", static_cast<int>(fontSize*1.2)));
+                painter.setFont(QFont("Arial", static_cast<int>(fontSize*1.3)));
             } else if ( i == 27 ) {
                 s = "W";
                 painter.setPen(blackPen);
 
-                painter.setFont(QFont("Arial", static_cast<int>(fontSize*1.2)));
+                painter.setFont(QFont("Arial", static_cast<int>(fontSize*1.3)));
             } else {
                 s = QString("%1").arg(i*rotAng);
                 painter.setPen(blackPen);
@@ -419,6 +418,7 @@ void QCompass::paintEvent(QPaintEvent *)
 
     // draw S/N arrow
     {
+        /*
         int     arrowWidth = m_size/5;
         double  fx1, fy1, fx2, fy2, fx3, fy3;
 
@@ -454,12 +454,13 @@ void QCompass::paintEvent(QPaintEvent *)
             QPointF(fx3, fy3)
         };
         painter.drawPolygon(pointsS, 3);
+        */
     }
 
 
     // draw yaw marker
     {
-        int     yawMarkerSize = m_size/12;
+        int     yawMarkerSize = m_size/8;
         double  fx1, fy1, fx2, fy2, fx3, fy3;
 
         painter.rotate(m_yaw);
@@ -512,7 +513,7 @@ void QCompass::paintEvent(QPaintEvent *)
 //        painter.drawText(QRectF(fx, fy+h/2, w, h/2), Qt::AlignCenter, s);
 ///////////////////////////////////////////////////////////////////////////////////////
 
-        int     altFontSize = 10;
+        int     altFontSize = 12;
         int     fx, fy, w, h;
         QString s;
         char    buf[200];
@@ -540,6 +541,7 @@ void QCompass::paintEvent(QPaintEvent *)
 
 void QCompass::keyPressEvent(QKeyEvent *event)
 {
+    /*
     switch (event->key()) {
     case Qt::Key_Left:
         m_yaw -= 1.0;
@@ -566,4 +568,5 @@ void QCompass::keyPressEvent(QKeyEvent *event)
     }
 
     update();
+    */
 }
