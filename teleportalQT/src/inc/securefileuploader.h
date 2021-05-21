@@ -44,8 +44,8 @@ private slots:
     void onConnectionError(QSsh::SshError);
     void onChannelInitialized();
     void onChannelError(const QString &err);
-    void onOpfinished(QSsh::SftpJobId job, const QString & error = QString());
-
+    void onOpfinished(QSsh::SftpJobId job, const QSsh::SftpError errorType, const QString &err);
+    void onTransferProgress(QSsh::SftpJobId job, quint64 progress, quint64 total);
 private:
     QString m_localFilename;
     QString m_remoteFilename;

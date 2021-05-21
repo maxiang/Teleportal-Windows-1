@@ -21,7 +21,7 @@
 
 #include <QtDebug>
 #include <QFileInfo>
-
+#include "sftpdefs.h"
 SecureFileUploader::SecureFileUploader(QObject *parent) :
     QObject(parent), m_connection(0)
 {
@@ -64,11 +64,13 @@ void SecureFileUploader::onConnected()
     if (m_channel) {
         connect(m_channel.data(), SIGNAL(initialized()),
                 SLOT(onChannelInitialized()));
-        connect(m_channel.data(), SIGNAL(initializationFailed(QString)),
+        connect(m_channel.data(), SIGNAL(channelError(QString)),
                 SLOT(onChannelError(QString)));
-        connect(m_channel.data(), SIGNAL(finished(QSsh::SftpJobId, QString)),
-                SLOT(onOpfinished(QSsh::SftpJobId, QString)));
-
+        connect(m_channel.data(), SIGNAL(finished(QSsh::SftpJobId job, const QSsh::SftpError, const QString &)),
+                SLOT(onOpfinished(QSsh::SftpJobId job, const QSsh::SftpError, const QString &)));
+        //void transferProgress(QSsh::SftpJobId job, quint64 progress, quint64 total);
+        connect(m_channel.data(), SIGNAL(transferProgress(QSsh::SftpJobId, quint64, quint64)),
+                SLOT(onTransferProgress(QSsh::SftpJobId, quint64, quint64)));
         m_channel->initialize();
 
     } else {
@@ -103,10 +105,18 @@ void SecureFileUploader::onChannelError(const QString &err)
      emit SftpEndcomplete();
 }
 
-void SecureFileUploader::onOpfinished(QSsh::SftpJobId job, const QString &err)
+void SecureFileUploader::onOpfinished(QSsh::SftpJobId job, const QSsh::SftpError errorType, const QString &err)
 {
     qDebug() << "SecureUploader: Finished job #" << job << ":" << (err.isEmpty() ? QStringLiteral("OK") : err);
-     emit SftpEndcomplete();
+    emit SftpEndcomplete();
+}
+
+void SecureFileUploader::onTransferProgress(QSsh::SftpJobId job, quint64 progress, quint64 total)
+{
+    qDebug() << "SecureUploader: progresss"<<progress<<"total"<<total;
+
+    if(progress>=total)
+        emit SftpEndcomplete();
 }
 
 
