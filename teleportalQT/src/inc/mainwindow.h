@@ -17,6 +17,7 @@
 namespace AS
 {
 #include "ardusub_api.h"
+
 }
 
 QT_BEGIN_NAMESPACE
@@ -48,6 +49,7 @@ public:
     void  PlayMediaFileMapText(QString strText);
 signals:
     void SetQMLText();
+    void UpdateLogWindow(const QString& strLog);
 private slots:
     void updateVehicleData();
     void manualControl();
@@ -80,7 +82,7 @@ private slots:
 
 
     void on_actionTakePhoto_triggered();
-
+    void  InitArdusubMessageLog();
 //qml key indicators
     void  On_QML_StatusChanged(QQuickWidget::Status status);
     void  On_QML_ArmState();
@@ -90,6 +92,8 @@ private slots:
     void  SetQMLItemOpacity(QString strObName,qreal fOpacity=1);
     void  SetQMLItemText(QString strObName,QString strButtonText);
     void  SetQMLItemVar(QString strObName,QString strVarName,const QVariant& var);
+    void on_actionMessageLog_triggered();
+
 private:
     Ui::MainWindow *ui;
 

@@ -4,6 +4,7 @@
 #include <QGeoCoordinate>
 #include <QGamepadManager>
 #include <QMediaPlayer>
+#include <glib/gmessages.h>
 
 // THIS APP USES ARDUSUB_API TO COMMUNICATE WITH ROBOT 192.168.2.2:14???
 // THIS APP USES GSTREAMER TO PLAY LIVE VIDEO STREAM ON PORT 5600
@@ -87,6 +88,7 @@ MainWindow::MainWindow(QWidget *parent)		//START APPLICATION
     // INITILIZE & CONNECT TO ROBOT
     std::string ip("192.168.2.");
     AS::as_api_init(ip.c_str(), F_THREAD_ALL);
+    InitArdusubMessageLog();
     bas_init_status=true;
     qDebug() << "ROBOT INITILIZED (86)";
 
@@ -1072,6 +1074,8 @@ void MainWindow::on_actionVideo_triggered()
     ui->actionMenu->setDisabled(false);
     ui->actionSonarGps->setChecked(false);
     ui->actionSonarGps->setDisabled(false);
+    ui->actionMessageLog->setChecked(false);
+    ui->actionMessageLog->setDisabled(false);
     qDebug() << "VIDEO PAGE DISPLAYED (1048)";
 }
 
@@ -1085,6 +1089,8 @@ void MainWindow::on_actionMenu_triggered()
     ui->actionVideo->setDisabled(false);
     ui->actionSonarGps->setChecked(false);
     ui->actionSonarGps->setDisabled(false);
+    ui->actionMessageLog->setChecked(false);
+    ui->actionMessageLog->setDisabled(false);
     qDebug() << "HELP PAGE DISPLAYED (1061)";
 }
 
@@ -1178,6 +1184,8 @@ void MainWindow::on_actionSonarGps_triggered()
     ui->actionMenu->setDisabled(false);
     ui->actionVideo->setChecked(false);
     ui->actionVideo->setDisabled(false);
+    ui->actionMessageLog->setChecked(false);
+    ui->actionMessageLog->setDisabled(false);
     qDebug() << "DISPLAY MAP PAGE (1193)";
 }
 
@@ -2181,3 +2189,78 @@ void  MainWindow::On_QML_StatusChanged(QQuickWidget::Status status)
 
 	// HEY THIS WAS A HARD PROJECT TO LEARN TO CODE WITH QT & C++ FOR FIRST TIME - GIVE ME A BREAK
 	// adam@osibot.com
+
+void MainWindow::on_actionMessageLog_triggered()
+{
+    ui->mainStackedWidget->setCurrentIndex(3);
+    ui->actionMessageLog->setChecked(true);
+    ui->actionMessageLog->setDisabled(false);
+    ui->actionMenu->setChecked(false);
+    ui->actionMenu->setDisabled(false);
+    ui->actionVideo->setChecked(false);
+    ui->actionVideo->setDisabled(false);
+    ui->actionSonarGps->setChecked(false);
+    ui->actionSonarGps->setDisabled(false);
+
+}
+void  MainWindow::InitArdusubMessageLog()
+{
+
+    auto    asMsglog=[](const gchar *log_domain,
+            GLogLevelFlags log_level,
+            const gchar *message,
+            gpointer user_data)
+    {
+
+        if(!user_data)return;
+        MainWindow* pWnd=(MainWindow*)user_data;
+        QString log_level_str;
+        QString log_time=QDateTime::currentDateTime().toString();
+        log_time+=log_domain;
+
+        switch (log_level)
+        {
+
+        case G_LOG_LEVEL_ERROR:
+            log_level_str = "[Error   ";
+            break;
+
+        case G_LOG_LEVEL_CRITICAL:
+            log_level_str = "[Critical]";
+            break;
+
+        case G_LOG_LEVEL_WARNING:
+            log_level_str = "[Warning ]";
+            break;
+
+        case G_LOG_LEVEL_MESSAGE:
+            log_level_str = "[Message ]";
+            break;
+
+        case G_LOG_LEVEL_INFO:
+            log_level_str = "[Info    ]";
+            break;
+
+        case G_LOG_LEVEL_DEBUG:
+            log_level_str = "[Debug   ]";
+            break;
+
+        default:
+            log_level_str = "[Error   ]";
+            break;
+        }
+        log_time+=log_level_str;
+        log_time+=message;
+        pWnd->UpdateLogWindow(log_time);
+    };
+    g_log_set_handler("[ardusub ini       ]", G_LOG_LEVEL_MASK,asMsglog, this);
+    g_log_set_handler("[ardusub interface ]", G_LOG_LEVEL_MASK,asMsglog, this);
+    g_log_set_handler("[ardusub io        ]", G_LOG_LEVEL_MASK,asMsglog, this);
+    g_log_set_handler("[ardusub log       ]", G_LOG_LEVEL_MASK,asMsglog, this);
+    g_log_set_handler("[ardusub msg       ]", G_LOG_LEVEL_MASK,asMsglog, this);
+    g_log_set_handler("[ardusub thread    ]", G_LOG_LEVEL_MASK,asMsglog, this);
+    connect(this,&MainWindow::UpdateLogWindow,[&](const QString& strLog){
+        ui->textEdit->append(strLog);
+    });
+
+}

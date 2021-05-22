@@ -39,5 +39,6 @@
         <file>../assets/icons/DOWN.png</file>
         <file>../assets/icons/UP.png</file>
         <file>../assets/icons/R.png</file>
+        <file>../assets/icons/msglog.png</file>
     </qresource>
 </RCC>

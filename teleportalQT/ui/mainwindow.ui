@@ -41,7 +41,7 @@
     <item>
      <widget class="QStackedWidget" name="mainStackedWidget">
       <property name="currentIndex">
-       <number>0</number>
+       <number>3</number>
       </property>
       <widget class="QWidget" name="videoPage">
        <widget class="QQuickWidget" name="quickWidget">
@@ -96,6 +96,17 @@
         </item>
        </layout>
       </widget>
+      <widget class="QWidget" name="msglog">
+       <layout class="QHBoxLayout" name="horizontalLayout_3">
+        <item>
+         <widget class="QTextEdit" name="textEdit">
+          <property name="readOnly">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
      </widget>
     </item>
    </layout>
@@ -139,6 +150,7 @@
    <addaction name="actionMute"/>
    <addaction name="actionTakePhoto"/>
    <addaction name="actionMenu"/>
+   <addaction name="actionMessageLog"/>
   </widget>
   <widget class="QToolBar" name="vehicleToolBar">
    <property name="minimumSize">
@@ -285,6 +297,21 @@
    </property>
    <property name="text">
     <string>Take Photo</string>
+   </property>
+  </action>
+  <action name="actionMessageLog">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="icon">
+    <iconset resource="../qrc/assets.qrc">
+     <normaloff>:/assets/icons/msglog.png</normaloff>:/assets/icons/msglog.png</iconset>
+   </property>
+   <property name="text">
+    <string>MessageLog</string>
+   </property>
+   <property name="toolTip">
+    <string>mavlink_statustext_t messages</string>
    </property>
   </action>
  </widget>
