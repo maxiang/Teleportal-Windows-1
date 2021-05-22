@@ -2040,6 +2040,7 @@ void  MainWindow::On_QML_ArmState()
    {
       		armCheckBox->setChecked(false);
             armCheckBox_stateChanged(true);
+            SetQMLItemVar("rectangle","arm",QVariant::fromValue(true));
     }
 
    
@@ -2048,6 +2049,7 @@ void  MainWindow::On_QML_ArmState()
         {
             armCheckBox->setChecked(true);
             armCheckBox_stateChanged(true);
+            SetQMLItemVar("rectangle","arm",QVariant::fromValue(false));
         }
 }
 
@@ -2070,6 +2072,7 @@ void  MainWindow::On_QML_DiveMode()
             SetQMLItemOpacity("DiveMode",0.8);
             manual_control.buttons = 2;
             UpdateKeyControlValue();
+            SetQMLItemVar("rectangle","mode",QVariant::fromValue(false));
    }
    else if (!bMode)
         {
@@ -2085,6 +2088,7 @@ void  MainWindow::On_QML_DiveMode()
             SetQMLItemOpacity("DiveMode",1.0);
             manual_control.buttons = 8;
             UpdateKeyControlValue();
+            SetQMLItemVar("rectangle","mode",QVariant::fromValue(true));
         }
 }
 void  MainWindow::On_QML_Speed()
@@ -2104,6 +2108,7 @@ void  MainWindow::On_QML_Speed()
             bSpeed = false;
             SetQMLItemOpacity("Speed",0.8);
             manual_control.buttons = 4096;
+            SetQMLItemVar("rectangle","speed",QVariant::fromValue(false));
         }
      else if (!bSpeed)
         {
@@ -2118,6 +2123,7 @@ void  MainWindow::On_QML_Speed()
             bSpeed = true;
             SetQMLItemOpacity("Speed",1.0);
             manual_control.buttons = 2048;
+            SetQMLItemVar("rectangle","speed",QVariant::fromValue(true));
         }
 }
 
@@ -2138,7 +2144,12 @@ void  MainWindow::SetQMLItemText(QString strObName,QString strButtonText)
         return;
     m_qmlObjectMap[strObName]->setProperty("text",QVariant::fromValue(strButtonText));
 }
-
+void  MainWindow::SetQMLItemVar(QString strObName,QString strVarName,const QVariant& var)
+{
+    if(m_qmlObjectMap.find(strObName)==m_qmlObjectMap.end())
+        return;
+    m_qmlObjectMap[strObName]->setProperty(strVarName.toStdString().c_str(),var);
+}
 void  MainWindow::On_QML_StatusChanged(QQuickWidget::Status status)
  {
     if(status==QQuickWidget::Ready)
@@ -2152,6 +2163,7 @@ void  MainWindow::On_QML_StatusChanged(QQuickWidget::Status status)
         hButton=ui->quickWidget->rootObject()->findChild<QObject*>("ArmState");
         QObject::connect(hButton,SIGNAL(clicked()),this,SLOT(On_QML_ArmState()));
         m_qmlObjectMap["ArmState"]=hButton;
+        m_qmlObjectMap["rectangle"]=ui->quickWidget->rootObject();
         //keyimg
         QStringList strImgList={"ForWard","MoveLeft","BackWard",
                                 "MoveRight","Up","TurnLeft","Down",

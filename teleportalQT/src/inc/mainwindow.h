@@ -89,7 +89,7 @@ private slots:
     void  Call_QML_ChangeKey(const QString& strKey);
     void  SetQMLItemOpacity(QString strObName,qreal fOpacity=1);
     void  SetQMLItemText(QString strObName,QString strButtonText);
-
+    void  SetQMLItemVar(QString strObName,QString strVarName,const QVariant& var);
 private:
     Ui::MainWindow *ui;
 

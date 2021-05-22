@@ -56,8 +56,8 @@ Item {
             y:330
 
             background: Rectangle {             
-                    border.color: "black"
-                    // border.color: arm ? "green" : "red"
+                    //border.color: "black"
+                    border.color: arm ? "green" : "red"
                     border.width: 3
 
             }
@@ -78,8 +78,8 @@ Item {
             y:375
 
             background: Rectangle {             
-                    border.color: "black"
-                    //border.color: mode ? "green" : "red"
+                    //border.color: "black"
+                    border.color: mode ? "green" : "red"
                     border.width: 3
             }
            // onClicked: {mode=!mode}
@@ -98,8 +98,8 @@ Item {
             x:parent.width-150
             y:420
             background:Rectangle {
-                    border.color: "black"
-                    //border.color: speed ? "green" : "red"
+                    //border.color: "black"
+                    border.color: speed ? "green" : "red"
                     border.width: 3}
              //onClicked: {speed=!speed}
         }
